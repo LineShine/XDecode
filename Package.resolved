@@ -1,0 +1,33 @@
+{
+  "originHash" : "20cf84fe1a9356a81f765301e7011322235fec3cb0594b72185fedd4158ce20c",
+  "pins" : [
+    {
+      "identity" : "swift-secp256k1",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/21-DOT-DEV/swift-secp256k1.git",
+      "state" : {
+        "revision" : "e70a10e036a55fffea31568f0af92d69b6d449cd",
+        "version" : "0.23.2"
+      }
+    },
+    {
+      "identity" : "swiftzstd",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/aperedera/SwiftZSTD.git",
+      "state" : {
+        "revision" : "ab63273ff89c6ed2966967b7998038352d00f813",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "zipfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
+      "state" : {
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
+      }
+    }
+  ],
+  "version" : 3
+}
