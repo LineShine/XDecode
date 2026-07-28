@@ -15,7 +15,7 @@ struct NotificationManagerTests {
 
         let presentation = NotificationManager.presentation(for: result)
 
-        #expect(presentation.title == "✅ sample.xlog解密成功")
+        #expect(presentation.title == "✅ sample.xlog (耗时 10 ms) 解密成功")
         #expect(!presentation.playsSound)
     }
 
@@ -28,7 +28,7 @@ struct NotificationManagerTests {
 
         let presentation = NotificationManager.presentation(for: result)
 
-        #expect(presentation.title == "❌ sample.xlog缺少匹配密钥")
+        #expect(presentation.title == "❌ sample.xlog (耗时 10 ms) 缺少匹配密钥")
         #expect(presentation.playsSound)
     }
 
@@ -39,7 +39,7 @@ struct NotificationManagerTests {
             message: "日志内容损坏：未找到有效的 Xlog 数据帧"
         )
 
-        #expect(NotificationManager.presentation(for: result).title == "❌ sample.xlog日志损坏")
+        #expect(NotificationManager.presentation(for: result).title == "❌ sample.xlog (耗时 10 ms) 日志损坏")
     }
 
     @Test("Source deletion warning remains distinct from decode failure")
@@ -51,7 +51,7 @@ struct NotificationManagerTests {
 
         #expect(
             NotificationManager.presentation(for: result).title
-                == "⚠️ sample.xlog解密成功，源文件删除失败"
+                == "⚠️ sample.xlog (耗时 10 ms) 解密成功，源文件删除失败"
         )
         #expect(!NotificationManager.presentation(for: result).playsSound)
     }
@@ -65,7 +65,7 @@ struct NotificationManagerTests {
         )
 
         let presentation = NotificationManager.presentation(for: result)
-        #expect(presentation.title == "⚠️ 123_456.zip部分成功")
+        #expect(presentation.title == "⚠️ 123_456.zip (耗时 10 ms) 部分成功")
         #expect(!presentation.playsSound)
     }
 
@@ -87,26 +87,66 @@ struct NotificationManagerTests {
         controller.menuNeedsUpdate(menu)
 
         let titles = menu.items.map(\.title)
-        #expect(titles.contains("✅ sample.xlog解密成功"))
-        #expect(titles.contains("❌ sample.xlog缺少匹配密钥"))
+        #expect(titles.contains("✅ sample.xlog (耗时 10 ms) 解密成功"))
+        #expect(titles.contains("❌ sample.xlog (耗时 10 ms) 缺少匹配密钥"))
         #expect(!titles.contains { $0.contains("· 完成") || $0.contains("· 失败") })
+    }
+
+    @Test("Finder reveal uses output when available and retained source after failure")
+    func finderRevealTargets() throws {
+        let sourceURL = URL(fileURLWithPath: "/tmp/sample.xlog")
+        let outputURL = URL(fileURLWithPath: "/tmp/sample.log")
+        let success = try makeResult(
+            state: .completed,
+            message: "解密完成",
+            sourceURL: sourceURL,
+            outputURL: outputURL,
+            sourceDeleted: true
+        )
+        let failure = try makeResult(
+            state: .failed,
+            message: "解密失败",
+            sourceURL: sourceURL
+        )
+
+        #expect(success.finderRevealURL == outputURL)
+        #expect(failure.finderRevealURL == sourceURL)
+    }
+
+    @Test("Duration levels use the one-second and three-second boundaries")
+    func durationLevels() throws {
+        let fast = try makeResult(state: .completed, message: "完成", durationMilliseconds: 999)
+        let warningStart = try makeResult(state: .completed, message: "完成", durationMilliseconds: 1_000)
+        let warningEnd = try makeResult(state: .completed, message: "完成", durationMilliseconds: 3_000)
+        let slow = try makeResult(state: .completed, message: "完成", durationMilliseconds: 3_001)
+
+        #expect(fast.durationLevel == .fast)
+        #expect(warningStart.durationLevel == .warning)
+        #expect(warningEnd.durationLevel == .warning)
+        #expect(slow.durationLevel == .slow)
     }
 
     private func makeResult(
         state: DecodeState,
         message: String,
-        sourceURL: URL = URL(fileURLWithPath: "/tmp/sample.xlog")
+        sourceURL: URL = URL(fileURLWithPath: "/tmp/sample.xlog"),
+        outputURL: URL? = nil,
+        sourceDeleted: Bool = false,
+        durationMilliseconds: Int = 10
     ) throws -> DecodeResult {
+        let requestedAt = Date(timeIntervalSince1970: 1_000)
         let request = try DecodeRequest(
             sourceURL: sourceURL,
-            origin: .automatic
+            origin: .automatic,
+            requestedAt: requestedAt
         )
         return DecodeResult(
             request: request,
             state: state,
-            outputURL: nil,
+            outputURL: outputURL,
             message: message,
-            sourceDeleted: false
+            sourceDeleted: sourceDeleted,
+            finishedAt: requestedAt.addingTimeInterval(Double(durationMilliseconds) / 1_000)
         )
     }
 }

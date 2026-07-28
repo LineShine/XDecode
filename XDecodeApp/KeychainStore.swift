@@ -2,8 +2,8 @@ import Foundation
 import Security
 
 struct KeychainStore: Sendable {
-    static let loganService = "com.lingxiang.XDecode.logan"
-    static let xlogService = "com.lingxiang.XDecode.xlog"
+    static let loganService = "com.flat.x.decode.logan"
+    static let xlogService = "com.flat.x.decode.xlog"
 
     private let service: String
 

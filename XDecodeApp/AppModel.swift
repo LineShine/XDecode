@@ -51,7 +51,7 @@ final class FolderAccessStore {
     private var bookmarks: [Data]
 
     init(
-        defaults: UserDefaults = UserDefaults(suiteName: "group.com.lingxiang.XDecode") ?? .standard,
+        defaults: UserDefaults = UserDefaults(suiteName: "group.com.flat.x.decode") ?? .standard,
         storageKey: String = FolderAccessStore.defaultKey,
         createBookmark: @escaping BookmarkCreator = FolderAccessStore.makeBookmark,
         resolveBookmark: @escaping BookmarkResolver = FolderAccessStore.resolveBookmark
@@ -236,8 +236,17 @@ final class AppModel: ObservableObject {
         Task {
             results = await historyStore.load()
             refreshStatusItem()
-            if settings.automaticEnabled, settings.destructivePolicyConfirmed {
+            guard settings.automaticEnabled else { return }
+            guard !settings.monitoredFolderURLs.isEmpty else {
+                settings.automaticEnabled = false
+                bannerMessage = "无法访问默认下载目录，请重新添加监控文件夹。"
+                return
+            }
+            if settings.destructivePolicyConfirmed {
                 startMonitoring()
+            } else {
+                pendingAutomaticEnable = true
+                deletionConfirmationPresented = true
             }
         }
     }
@@ -284,9 +293,15 @@ final class AppModel: ObservableObject {
     }
 
     func cancelPermanentDeletion() {
+        let shouldDisableAutomaticMonitoring = pendingAutomaticEnable
         deletionConfirmationPresented = false
         pendingRequests.removeAll()
         pendingAutomaticEnable = false
+        if shouldDisableAutomaticMonitoring {
+            settings.automaticEnabled = false
+            monitor.stop()
+            try? SMAppService.mainApp.unregister()
+        }
     }
 
     func chooseFiles() {

@@ -22,9 +22,9 @@
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.lingxiang.xdecode.xlog</string>
-				<string>com.lingxiang.xdecode.mx</string>
-				<string>com.lingxiang.xdecode.logan</string>
+				<string>com.flat.x.decode.xlog</string>
+				<string>com.flat.x.decode.mx</string>
+				<string>com.flat.x.decode.logan</string>
 				<string>public.zip</string>
 			</array>
 		</dict>
@@ -55,27 +55,54 @@
 	<array>
 		<dict>
 			<key>UTTypeConformsTo</key>
-			<array><string>public.data</string></array>
-			<key>UTTypeDescription</key><string>Xlog Log</string>
-			<key>UTTypeIdentifier</key><string>com.lingxiang.xdecode.xlog</string>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Xlog Log</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.flat.x.decode.xlog</string>
 			<key>UTTypeTagSpecification</key>
-			<dict><key>public.filename-extension</key><array><string>xlog</string></array></dict>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>xlog</string>
+				</array>
+			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
-			<array><string>public.data</string></array>
-			<key>UTTypeDescription</key><string>MX Log</string>
-			<key>UTTypeIdentifier</key><string>com.lingxiang.xdecode.mx</string>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>MX Log</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.flat.x.decode.mx</string>
 			<key>UTTypeTagSpecification</key>
-			<dict><key>public.filename-extension</key><array><string>mx</string></array></dict>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>mx</string>
+				</array>
+			</dict>
 		</dict>
 		<dict>
 			<key>UTTypeConformsTo</key>
-			<array><string>public.data</string></array>
-			<key>UTTypeDescription</key><string>Logan Log</string>
-			<key>UTTypeIdentifier</key><string>com.lingxiang.xdecode.logan</string>
+			<array>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Logan Log</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.flat.x.decode.logan</string>
 			<key>UTTypeTagSpecification</key>
-			<dict><key>public.filename-extension</key><array><string>logan</string></array></dict>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>logan</string>
+				</array>
+			</dict>
 		</dict>
 	</array>
 </dict>

@@ -136,6 +136,8 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 - 不要用 `nonisolated(unsafe)` 绕过新问题；`FolderMonitor.stream` 是 Core Foundation 回调生命周期的局部例外。
 - `activeSourcePaths` 防止同一路径并发重复处理，任何新增入口都必须经过 `AppModel.enqueue`。
 - Security-scoped access 必须成对结束。异步任务的所有退出路径都要释放文件 URL 和授权目录访问。
+- 首次安装默认启用自动解密并写入 `~/Downloads` 监控书签；用户显式关闭或移除目录后不得在后续启动中重新补回。
+- 默认自动解密仍受永久删除确认约束。首次启动取消确认时必须同步关闭自动解密，不能留下“界面开启、监听未运行”的状态。
 - 自动监听启动时先快照已有文件，只处理之后新增的文件；不要改成启动后扫描并处理整个目录。
 
 ## 数据与安全
@@ -144,6 +146,7 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 - `script/xlog_crypt_log.py` 含协议参考用常量，不能把它当生产密钥来源，也不要把用户提供的密钥写回脚本。
 - Xlog/Logan 方案元数据放共享 `UserDefaults`，密钥正文只放对应 Keychain service。
 - 主 App 与 Finder 扩展必须保持相同 App Group；改 Bundle ID/App Group 时同步工程、entitlements、UserDefaults suite 和容器访问。
+- `~/Downloads` 使用 `com.apple.security.files.downloads.read-write`；不要把静态文件权限扩大到下载目录之外。
 - 文件授权通过 app-scoped security bookmark 持久化。不要扩大沙盒权限来规避书签流程。
 - 二进制解析必须通过有边界检查的读取方法；对来自文件的长度做溢出和上限验证后才能分配内存。
 

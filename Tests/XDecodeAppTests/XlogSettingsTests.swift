@@ -61,6 +61,52 @@ struct XlogSettingsTests {
         #expect(!restored.menuBarEnabled)
     }
 
+    @Test("Automatic decoding defaults to Downloads and explicit removal persists")
+    func automaticDecodeDefaults() throws {
+        let suiteName = "XDecodeAutomaticDefaultsTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let downloads = URL(fileURLWithPath: "/tmp/Downloads", isDirectory: true)
+        let encode: AppSettings.BookmarkCreator = { Data($0.standardizedFileURL.path.utf8) }
+        let decode: AppSettings.BookmarkResolver = { data in
+            guard let path = String(data: data, encoding: .utf8) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+
+        let initial = AppSettings(
+            defaults: defaults,
+            createBookmark: encode,
+            resolveBookmark: decode,
+            defaultMonitoredFolderURL: downloads
+        )
+        #expect(initial.automaticEnabled)
+        #expect(initial.monitoredFolderURLs == [downloads])
+        #expect(defaults.bool(forKey: "automaticEnabled"))
+
+        initial.automaticEnabled = false
+        initial.removeMonitoredFolder(downloads)
+        let restored = AppSettings(
+            defaults: defaults,
+            createBookmark: encode,
+            resolveBookmark: decode,
+            defaultMonitoredFolderURL: downloads
+        )
+        #expect(!restored.automaticEnabled)
+        #expect(restored.monitoredFolderURLs.isEmpty)
+
+        defaults.removeObject(forKey: "monitoredFolderBookmarks")
+        let legacyRestored = AppSettings(
+            defaults: defaults,
+            createBookmark: encode,
+            resolveBookmark: decode,
+            defaultMonitoredFolderURL: downloads
+        )
+        #expect(legacyRestored.monitoredFolderURLs.isEmpty)
+    }
+
     @Test("ZIP rules migrate, support additions, persist, and match independently")
     func migratesLegacyDefaults() throws {
         let suiteName = "XDecodePatternMigrationTests.\(UUID().uuidString)"

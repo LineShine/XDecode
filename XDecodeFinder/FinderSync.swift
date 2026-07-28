@@ -50,7 +50,7 @@ final class FinderSyncExtension: FIFinderSync {
 
     private static func isSupported(_ url: URL) -> Bool {
         let pathExtension = url.pathExtension.lowercased()
-        let defaults = UserDefaults(suiteName: "group.com.lingxiang.XDecode")
+        let defaults = UserDefaults(suiteName: "group.com.flat.x.decode")
         if pathExtension == "xlog" { return true }
         if matches(defaults?.string(forKey: "mxFilePattern") ?? DefaultPattern.mx, url: url) {
             return true

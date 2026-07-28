@@ -131,14 +131,21 @@ final class AppSettings: ObservableObject {
     @Published private(set) var zipPatternRules: [ZipPatternRule]
 
     init(
-        defaults: UserDefaults = UserDefaults(suiteName: "group.com.lingxiang.XDecode") ?? .standard,
+        defaults: UserDefaults = UserDefaults(suiteName: "group.com.flat.x.decode") ?? .standard,
         createBookmark: @escaping BookmarkCreator = AppSettings.makeBookmark,
-        resolveBookmark: @escaping BookmarkResolver = AppSettings.resolveBookmark
+        resolveBookmark: @escaping BookmarkResolver = AppSettings.resolveBookmark,
+        defaultMonitoredFolderURL: URL? = FileManager.default.urls(
+            for: .downloadsDirectory,
+            in: .userDomainMask
+        ).first
     ) {
         self.defaults = defaults
         self.createBookmark = createBookmark
         self.resolveBookmark = resolveBookmark
-        automaticEnabled = defaults.bool(forKey: Key.automaticEnabled)
+        let hasStoredAutomaticSetting = defaults.object(forKey: Key.automaticEnabled) != nil
+        automaticEnabled = hasStoredAutomaticSetting
+            ? defaults.bool(forKey: Key.automaticEnabled)
+            : true
         notificationsEnabled = defaults.object(forKey: Key.notificationsEnabled) == nil
             ? true
             : defaults.bool(forKey: Key.notificationsEnabled)
@@ -163,6 +170,12 @@ final class AppSettings: ObservableObject {
             monitoredFolderBookmarks = bookmarks
         } else if let legacyBookmark = defaults.data(forKey: Key.monitoredFolderBookmark) {
             monitoredFolderBookmarks = [legacyBookmark]
+        } else if !hasStoredAutomaticSetting,
+                  defaults.object(forKey: Key.monitoredFolderBookmarks) == nil,
+                  defaults.object(forKey: Key.monitoredFolderBookmark) == nil,
+                  let defaultMonitoredFolderURL,
+                  let bookmark = try? createBookmark(defaultMonitoredFolderURL) {
+            monitoredFolderBookmarks = [bookmark]
         } else {
             monitoredFolderBookmarks = []
         }
@@ -175,6 +188,9 @@ final class AppSettings: ObservableObject {
         for index in loganProfiles.indices where loganProfiles[index].filePattern == "*.logan" {
             loganProfiles[index].filePattern = FilenamePatternDefaults.logan
             migratedLoganProfiles = true
+        }
+        if !hasStoredAutomaticSetting {
+            defaults.set(automaticEnabled, forKey: Key.automaticEnabled)
         }
         persistZipPatternRules()
         persistMonitoredFolderBookmarks()

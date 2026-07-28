@@ -6,7 +6,7 @@ actor HistoryStore {
     private let retention: TimeInterval = 30 * 24 * 60 * 60
 
     init(fileManager: FileManager = .default) {
-        let base = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.lingxiang.XDecode")
+        let base = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.flat.x.decode")
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
                 .appendingPathComponent("XDecode", isDirectory: true)
         try? fileManager.createDirectory(at: base, withIntermediateDirectories: true)

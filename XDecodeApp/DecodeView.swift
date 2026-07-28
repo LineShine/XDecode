@@ -115,19 +115,28 @@ struct ResultRow: View {
                 .frame(width: 30, height: 30)
                 .foregroundStyle(iconColor)
             VStack(alignment: .leading, spacing: 3) {
-                Text(result.request.sourceURL.lastPathComponent).lineLimit(1)
+                HStack(spacing: 10) {
+                    Text(result.request.sourceURL.lastPathComponent)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Text("(\(result.durationText))")
+                        .font(.caption2.weight(.medium))
+                        .monospacedDigit()
+                        .foregroundStyle(durationColor.opacity(0.75))
+                        .fixedSize()
+                }
                 Text(result.message).font(.caption).foregroundStyle(.secondary).lineLimit(2)
             }
             Spacer()
             Text(result.request.format.rawValue).font(.caption).foregroundStyle(.secondary)
-            if let outputURL = result.outputURL {
+            if let revealURL = result.finderRevealURL {
                 Button {
-                    NSWorkspace.shared.activateFileViewerSelecting([outputURL])
+                    NSWorkspace.shared.activateFileViewerSelecting([revealURL])
                 } label: {
                     Image(systemName: "folder")
                 }
                 .buttonStyle(.borderless)
-                .help("在 Finder 中显示")
+                .help(result.outputURL == nil ? "在 Finder 中显示源文件" : "在 Finder 中显示输出")
             }
         }
         .padding(.vertical, 10)
@@ -148,6 +157,14 @@ struct ResultRow: View {
         case .partiallyCompleted: .orange
         case .completedWithWarning: .orange
         case .failed: .red
+        }
+    }
+
+    private var durationColor: Color {
+        switch result.durationLevel {
+        case .fast: .green
+        case .warning: .orange
+        case .slow: .red
         }
     }
 }

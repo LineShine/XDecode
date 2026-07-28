@@ -7,6 +7,41 @@ struct NotificationPresentation: Equatable, Sendable {
     let playsSound: Bool
 }
 
+enum DecodeDurationLevel: Equatable, Sendable {
+    case fast
+    case warning
+    case slow
+}
+
+extension DecodeResult {
+    var durationMilliseconds: Int {
+        let milliseconds = finishedAt.timeIntervalSince(request.requestedAt) * 1_000
+        guard milliseconds.isFinite, milliseconds > 0 else { return 0 }
+        return Int(milliseconds.rounded())
+    }
+
+    var durationText: String {
+        "耗时 \(durationMilliseconds) ms"
+    }
+
+    var durationLevel: DecodeDurationLevel {
+        switch durationMilliseconds {
+        case ..<1_000: .fast
+        case ...3_000: .warning
+        default: .slow
+        }
+    }
+
+    var displayFileName: String {
+        "\(request.sourceURL.lastPathComponent) (\(durationText))"
+    }
+
+    var finderRevealURL: URL? {
+        if let outputURL { return outputURL }
+        return sourceDeleted ? nil : request.sourceURL
+    }
+}
+
 @MainActor
 final class NotificationManager {
     private var center: UNUserNotificationCenter?
@@ -51,27 +86,27 @@ final class NotificationManager {
     }
 
     nonisolated static func presentation(for result: DecodeResult) -> NotificationPresentation {
-        let fileName = result.request.sourceURL.lastPathComponent
+        let fileName = result.displayFileName
 
         switch result.state {
         case .completed:
             return NotificationPresentation(
-                title: "✅ \(fileName)解密成功",
+                title: "✅ \(fileName) 解密成功",
                 playsSound: false
             )
         case .partiallyCompleted:
             return NotificationPresentation(
-                title: "⚠️ \(fileName)部分成功",
+                title: "⚠️ \(fileName) 部分成功",
                 playsSound: false
             )
         case .completedWithWarning:
             return NotificationPresentation(
-                title: "⚠️ \(fileName)解密成功，源文件删除失败",
+                title: "⚠️ \(fileName) 解密成功，源文件删除失败",
                 playsSound: false
             )
         case .failed:
             return NotificationPresentation(
-                title: "❌ \(fileName)\(failureSummary(for: result.message))",
+                title: "❌ \(fileName) \(failureSummary(for: result.message))",
                 playsSound: true
             )
         }
