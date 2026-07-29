@@ -21,7 +21,6 @@
 		A00000000000000000000016 /* MonitorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000036 /* MonitorView.swift */; };
 		A00000000000000000000017 /* FinderIntegrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000037 /* FinderIntegrationView.swift */; };
 		A00000000000000000000018 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000038 /* SettingsView.swift */; };
-		A00000000000000000000019 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000039 /* KeychainStore.swift */; };
 		A0000000000000000000001A /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003A /* HistoryStore.swift */; };
 		A0000000000000000000001B /* FileStabilityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003B /* FileStabilityGate.swift */; };
 		A0000000000000000000001C /* FolderMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000003C /* FolderMonitor.swift */; };
@@ -65,7 +64,6 @@
 		A00000000000000000000036 /* MonitorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorView.swift; sourceTree = "<group>"; };
 		A00000000000000000000037 /* FinderIntegrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderIntegrationView.swift; sourceTree = "<group>"; };
 		A00000000000000000000038 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		A00000000000000000000039 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		A0000000000000000000003A /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		A0000000000000000000003B /* FileStabilityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileStabilityGate.swift; sourceTree = "<group>"; };
 		A0000000000000000000003C /* FolderMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderMonitor.swift; sourceTree = "<group>"; };
@@ -126,7 +124,6 @@
 				A00000000000000000000036 /* MonitorView.swift */,
 				A00000000000000000000037 /* FinderIntegrationView.swift */,
 				A00000000000000000000038 /* SettingsView.swift */,
-				A00000000000000000000039 /* KeychainStore.swift */,
 				A0000000000000000000003A /* HistoryStore.swift */,
 				A0000000000000000000003B /* FileStabilityGate.swift */,
 				A0000000000000000000003C /* FolderMonitor.swift */,
@@ -216,19 +213,9 @@
 				TargetAttributes = {
 					A00000000000000000000060 = {
 						CreatedOnToolsVersion = 26.1;
-						SystemCapabilities = {
-							com.apple.ApplicationGroups = {
-								enabled = 1;
-							};
-						};
 					};
 					A00000000000000000000061 = {
 						CreatedOnToolsVersion = 26.1;
-						SystemCapabilities = {
-							com.apple.ApplicationGroups = {
-								enabled = 1;
-							};
-						};
 					};
 				};
 			};
@@ -286,7 +273,6 @@
 				A00000000000000000000016 /* MonitorView.swift in Sources */,
 				A00000000000000000000017 /* FinderIntegrationView.swift in Sources */,
 				A00000000000000000000018 /* SettingsView.swift in Sources */,
-				A00000000000000000000019 /* KeychainStore.swift in Sources */,
 				A0000000000000000000001A /* HistoryStore.swift in Sources */,
 				A0000000000000000000001B /* FileStabilityGate.swift in Sources */,
 				A0000000000000000000001C /* FolderMonitor.swift in Sources */,
@@ -342,7 +328,6 @@
 		A000000000000000000000B2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).com.flat.x.decode";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = XDecodeApp/XDecode.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -367,7 +352,6 @@
 		A000000000000000000000B3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).com.flat.x.decode";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = XDecodeApp/XDecode.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
@@ -392,7 +376,6 @@
 		A000000000000000000000B4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).com.flat.x.decode";
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = XDecodeFinder/XDecodeFinder.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -416,7 +399,6 @@
 		A000000000000000000000B5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				APP_GROUP_IDENTIFIER = "$(DEVELOPMENT_TEAM).com.flat.x.decode";
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = XDecodeFinder/XDecodeFinder.entitlements;
 				CODE_SIGN_STYLE = Automatic;

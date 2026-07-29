@@ -37,7 +37,6 @@ let package = Package(
             exclude: ["Assets.xcassets", "Info.plist", "XDecode.entitlements"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
-                .linkedFramework("Security"),
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("UserNotifications"),
             ]

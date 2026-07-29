@@ -52,7 +52,7 @@ final class FolderAccessStore {
     private var bookmarks: [Data]
 
     init(
-        defaults: UserDefaults = UserDefaults(suiteName: SharedContainer.identifier) ?? .standard,
+        defaults: UserDefaults = .standard,
         storageKey: String = FolderAccessStore.defaultKey,
         staticallyAuthorizedDirectories: [URL] = FileManager.default.urls(
             for: .downloadsDirectory,
@@ -188,8 +188,6 @@ final class AppModel: ObservableObject {
     @Published var bannerMessage: String?
 
     let settings = AppSettings()
-    private let loganKeychain = KeychainStore(service: KeychainStore.loganService)
-    private let xlogKeychain = KeychainStore(service: KeychainStore.xlogService)
     private let historyStore = HistoryStore()
     private let monitor = FolderMonitor()
     private let suppressionStore = AutomaticDecodeSuppressionStore()
@@ -405,18 +403,21 @@ final class AppModel: ObservableObject {
         }
         if hasPrivateKey {
             let credentials = try XlogCredentials(privateKeyHex: privateKeyHex)
-            try xlogKeychain.save(credentials.privateKey, account: profile.id.uuidString)
+            settings.saveXlogPrivateKey(credentials.privateKey, for: profile.id)
+        } else if settings.xlogPrivateKey(for: profile.id) == nil {
+            throw DecodeError.invalidCredentials("请重新填写 64 位 Hex 私钥")
         }
         settings.upsert(profile: profile)
     }
 
     func xlogPrivateKeyHex(for profile: XlogProfile) throws -> String {
-        let key = try xlogKeychain.read(account: profile.id.uuidString)
+        guard let key = settings.xlogPrivateKey(for: profile.id) else {
+            throw DecodeError.missingCredentials(.xlog)
+        }
         return key.map { String(format: "%02x", $0) }.joined()
     }
 
     func removeXlogProfile(_ profile: XlogProfile) {
-        xlogKeychain.remove(account: profile.id.uuidString)
         settings.remove(profile: profile)
     }
 
@@ -428,15 +429,13 @@ final class AppModel: ObservableObject {
             throw DecodeError.invalidCredentials("新增 Logan 方案必须填写至少 16 字节的 AES Key 和 IV")
         }
 
-        let keyData = hasKey
-            ? Data(key.utf8)
-            : try loganKeychain.read(account: "\(profile.id.uuidString).key")
-        let ivData = hasIV
-            ? Data(iv.utf8)
-            : try loganKeychain.read(account: "\(profile.id.uuidString).iv")
+        let stored = settings.loganCredentials(for: profile.id)
+        guard let keyData = hasKey ? Data(key.utf8) : stored?.key,
+              let ivData = hasIV ? Data(iv.utf8) : stored?.iv else {
+            throw DecodeError.invalidCredentials("请重新填写至少 16 字节的 AES Key 和 IV")
+        }
         _ = try LoganCredentials(key: keyData, iv: ivData)
-        try loganKeychain.save(keyData, account: "\(profile.id.uuidString).key")
-        try loganKeychain.save(ivData, account: "\(profile.id.uuidString).iv")
+        settings.saveLoganCredentials(key: keyData, iv: ivData, for: profile.id)
         settings.upsert(profile: profile)
     }
 
@@ -449,8 +448,6 @@ final class AppModel: ObservableObject {
     }
 
     func removeLoganProfile(_ profile: LoganProfile) {
-        loganKeychain.remove(account: "\(profile.id.uuidString).key")
-        loganKeychain.remove(account: "\(profile.id.uuidString).iv")
         settings.remove(profile: profile)
     }
 
@@ -585,7 +582,7 @@ final class AppModel: ObservableObject {
         settings.xlogProfiles
             .filter { $0.matches(url) }
             .compactMap { profile in
-                guard let key = try? xlogKeychain.read(account: profile.id.uuidString) else { return nil }
+                guard let key = settings.xlogPrivateKey(for: profile.id) else { return nil }
                 return try? XlogCredentials(privateKey: key)
             }
     }
@@ -598,17 +595,18 @@ final class AppModel: ObservableObject {
         settings.loganProfiles
             .filter { $0.matches(url) }
             .compactMap { profile -> LoganCredentials? in
-                guard let key = try? loganKeychain.read(account: "\(profile.id.uuidString).key"),
-                      let iv = try? loganKeychain.read(account: "\(profile.id.uuidString).iv")
-                else { return nil }
-                return try? LoganCredentials(key: key, iv: iv)
+                guard let credentials = settings.loganCredentials(for: profile.id) else { return nil }
+                return try? LoganCredentials(key: credentials.key, iv: credentials.iv)
             }
     }
 
     private func loganSecret(for profile: LoganProfile, suffix: String) throws -> String {
-        let data = try loganKeychain.read(account: "\(profile.id.uuidString).\(suffix)")
+        guard let credentials = settings.loganCredentials(for: profile.id) else {
+            throw DecodeError.missingCredentials(.logan)
+        }
+        let data = suffix == "key" ? credentials.key : credentials.iv
         guard let value = String(data: data, encoding: .utf8) else {
-            throw DecodeError.invalidCredentials("钥匙串中的 Logan 密钥不是有效 UTF-8 文本")
+            throw DecodeError.invalidCredentials("保存的 Logan 密钥不是有效 UTF-8 文本")
         }
         return value
     }

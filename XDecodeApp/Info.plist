@@ -51,8 +51,6 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026.</string>
-	<key>XDecodeAppGroupIdentifier</key>
-	<string>$(APP_GROUP_IDENTIFIER)</string>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

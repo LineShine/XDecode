@@ -125,7 +125,7 @@ struct SettingsView: View {
             } header: {
                 Text("Xlog secp256k1 私钥")
             } footer: {
-                Text("私钥保存在 macOS 钥匙串中。文件名支持 * 和 ? 通配符，多个匹配方案会自动尝试。")
+                Text("私钥保存在本机 App 设置中。文件名支持 * 和 ? 通配符，多个匹配方案会自动尝试。")
             }
 
             Section {
@@ -152,7 +152,7 @@ struct SettingsView: View {
             } header: {
                 Text("Logan Key / IV")
             } footer: {
-                Text("AES Key 和 IV 均至少填写 16 字节，超过部分不参与解密；完整原文保存在 macOS 钥匙串中。文件名支持 *、? 和 yyyy-MM-dd。")
+                Text("AES Key 和 IV 均至少填写 16 字节，超过部分不参与解密；完整原文保存在本机 App 设置中。文件名支持 *、? 和 yyyy-MM-dd。")
             }
         }
         .formStyle(.grouped)

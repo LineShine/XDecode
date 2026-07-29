@@ -19,7 +19,7 @@ XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlo
 - 多套 Xlog 私钥和 Logan Key/IV 方案，可按文件名匹配并依次尝试。
 - 多文件并行任务、多个递归监控文件夹，以及文件写入稳定后再自动处理。
 - 30 天任务历史、macOS 通知、菜单栏最近任务和 Finder 中定位输出。
-- App Sandbox、Team ID App Group、Security-Scoped Bookmark 和 macOS Keychain。密钥不会写入 `UserDefaults` 或历史记录。
+- App Sandbox 和 Security-Scoped Bookmark。密钥保存在主 App 沙盒内的标准 `UserDefaults`，不会进入历史、通知或 Finder 扩展。
 - ZIP 路径穿越、重复路径、CRC、条目数量和解压大小校验。
 
 ## 使用方法
@@ -51,7 +51,7 @@ python3 script/xlog_gen_key.py
 - 拖入“解密日志”区域。
 - 点击“选择文件”，或按 `Command-O`。
 - 在 Finder 中选择“打开方式 -> XDecode”。
-- 启用 Finder 扩展后，使用右键菜单“使用 XDecode 解密”。Finder 扩展当前覆盖用户主目录。
+- 启用 Finder 扩展后，使用右键菜单“使用 XDecode 解密”。Finder 扩展当前覆盖用户主目录，只转发普通文件，由主 App 按当前规则筛选。
 - 在“监控文件夹”中添加一个或多个目录并启用“自动解密”。监听是递归的，只处理启用监听后新增且符合规则的普通文件。
 
 “打开方式 -> XDecode”会复用唯一主窗口；如果 XDecode 尚未运行，则在后台处理文件，不额外显示主窗口。需要查看任务时可从 Dock 或菜单栏打开 XDecode。
@@ -105,7 +105,7 @@ XDecode/
 ├── AGENTS.md                      # Codex AI Coding 工程指南
 ├── Package.swift                 # Swift Package、依赖和测试入口
 ├── Sources/XDecodeCore/          # 无 UI 的解码器、模型和文件发布协调器
-├── XDecodeApp/                   # SwiftUI App、设置、监听、历史、通知、钥匙串
+├── XDecodeApp/                   # SwiftUI App、设置、监听、历史和通知
 ├── XDecodeFinder/                # Finder Sync 右键扩展
 ├── Tests/XDecodeCoreTests/       # 格式、完整性、并发输出和 ZIP 安全测试
 ├── Tests/XDecodeAppTests/        # 匹配、书签、监听、通知和抑制回环测试
@@ -137,9 +137,9 @@ AppModel -> AppSettings 文件名分类 -> DecodeRequest
 - `Sources/XDecodeCore/DecodeCoordinator.swift`：单文件事务式输出和源文件删除。
 - `Sources/XDecodeCore/ZipDecodeCoordinator.swift`：ZIP 检查、分项处理和目录发布。
 - `XDecodeApp/AppModel.swift`：入口汇总、权限、任务、密钥解析和结果分发。
-- `XDecodeApp/AppSettings.swift`：文件名规则、方案元数据和监控目录书签。
+- `XDecodeApp/AppSettings.swift`：标准 UserDefaults 设置、密钥、文件名规则和监控目录书签。
 - `XDecodeApp/FolderMonitor.swift`：基于 FSEvents 的递归新增文件检测。
-- `XDecodeFinder/FinderSync.swift`：Finder 菜单和主 App 拉起。
+- `XDecodeFinder/FinderSync.swift`：Finder 菜单和普通文件转发；不读取主 App 设置或密钥。
 
 ## 构建与测试
 
@@ -154,7 +154,7 @@ AppModel -> AppSettings 文件名分类 -> DecodeRequest
 - `SwiftZSTD 1.0.1`：Xlog Zstandard 解压。
 - `swift-secp256k1 0.23.2`：Xlog secp256k1 ECDH。
 - `ZIPFoundation 0.9.20`：ZIP 读取和 CRC 校验。
-- 系统 `zlib`、`CommonCrypto`、`Security`、`ServiceManagement` 与 `UserNotifications`。
+- 系统 `zlib`、`CommonCrypto`、`ServiceManagement` 与 `UserNotifications`。
 
 运行全部单元测试：
 
@@ -171,7 +171,7 @@ swift build
 运行完整 macOS App 和 Finder 扩展：
 
 1. 打开 `XDecode.xcodeproj`。
-2. 根据本机开发者账号调整 Signing Team；App Group 由 `$(DEVELOPMENT_TEAM).com.flat.x.decode` 生成。主 App 与扩展必须使用同一个 Team ID 前缀 App Group。
+2. 根据本机开发者账号调整 Signing Team。主 App 和 Finder 扩展不使用 App Group，也不共享设置容器。
 3. 选择共享的 `XDecode` Scheme 并运行。
 4. 在系统设置中启用 XDecode Finder 扩展，验证右键入口。
 

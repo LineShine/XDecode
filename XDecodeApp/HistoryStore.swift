@@ -6,11 +6,8 @@ actor HistoryStore {
     private let retention: TimeInterval = 30 * 24 * 60 * 60
 
     init(fileManager: FileManager = .default) {
-        let base = fileManager.containerURL(
-            forSecurityApplicationGroupIdentifier: SharedContainer.identifier
-        )
-            ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-                .appendingPathComponent("XDecode", isDirectory: true)
+        let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("XDecode", isDirectory: true)
         try? fileManager.createDirectory(at: base, withIntermediateDirectories: true)
         fileURL = base.appendingPathComponent("history.json")
     }

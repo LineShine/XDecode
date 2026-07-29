@@ -1,19 +1,6 @@
 import Foundation
 import XDecodeCore
 
-enum SharedContainer {
-    static let identifier: String = {
-        let configured = Bundle.main.object(
-            forInfoDictionaryKey: "XDecodeAppGroupIdentifier"
-        ) as? String
-        guard let configured,
-              !configured.isEmpty,
-              !configured.contains("$(")
-        else { return "32MTP8HP59.com.flat.x.decode" }
-        return configured
-    }()
-}
-
 enum FilenamePatternDefaults {
     static let xlog = "*.xlog"
     static let logan = "yyyy-MM-dd"
@@ -116,6 +103,11 @@ final class AppSettings: ObservableObject {
     typealias BookmarkCreator = (URL) throws -> Data
     typealias BookmarkResolver = (Data) throws -> URL
 
+    private struct StoredLoganCredentials: Codable {
+        let key: Data
+        let iv: Data
+    }
+
     private enum Key {
         static let automaticEnabled = "automaticEnabled"
         static let defaultDownloadsMonitoringEnabled = "defaultDownloadsMonitoringEnabled"
@@ -126,6 +118,8 @@ final class AppSettings: ObservableObject {
         static let monitoredFolderBookmarks = "monitoredFolderBookmarks"
         static let xlogProfiles = "xlogProfiles"
         static let loganProfiles = "loganProfiles"
+        static let xlogPrivateKeys = "xlogPrivateKeys"
+        static let loganCredentials = "loganCredentials"
         static let mxFilePattern = "mxFilePattern"
         static let zipFilePattern = "zipFilePattern"
         static let zipPatternRules = "zipPatternRules"
@@ -148,9 +142,11 @@ final class AppSettings: ObservableObject {
     @Published private(set) var xlogProfiles: [XlogProfile]
     @Published private(set) var loganProfiles: [LoganProfile]
     @Published private(set) var zipPatternRules: [ZipPatternRule]
+    private var xlogPrivateKeys: [String: Data]
+    private var loganCredentials: [String: StoredLoganCredentials]
 
     init(
-        defaults: UserDefaults = UserDefaults(suiteName: SharedContainer.identifier) ?? .standard,
+        defaults: UserDefaults = .standard,
         createBookmark: @escaping BookmarkCreator = AppSettings.makeBookmark,
         resolveBookmark: @escaping BookmarkResolver = AppSettings.resolveBookmark,
         defaultMonitoredFolderURL: URL? = FileManager.default.urls(
@@ -235,6 +231,12 @@ final class AppSettings: ObservableObject {
             .flatMap { try? JSONDecoder().decode([XlogProfile].self, from: $0) } ?? []
         loganProfiles = defaults.data(forKey: Key.loganProfiles)
             .flatMap { try? JSONDecoder().decode([LoganProfile].self, from: $0) } ?? []
+        xlogPrivateKeys = defaults.data(forKey: Key.xlogPrivateKeys)
+            .flatMap { try? JSONDecoder().decode([String: Data].self, from: $0) } ?? [:]
+        loganCredentials = defaults.data(forKey: Key.loganCredentials)
+            .flatMap {
+                try? JSONDecoder().decode([String: StoredLoganCredentials].self, from: $0)
+            } ?? [:]
 
         var migratedLoganProfiles = false
         for index in loganProfiles.indices where loganProfiles[index].filePattern == "*.logan" {
@@ -345,7 +347,18 @@ final class AppSettings: ObservableObject {
 
     func remove(profile: XlogProfile) {
         xlogProfiles.removeAll { $0.id == profile.id }
+        xlogPrivateKeys.removeValue(forKey: profile.id.uuidString)
         persistXlogProfiles()
+        persistXlogPrivateKeys()
+    }
+
+    func saveXlogPrivateKey(_ privateKey: Data, for profileID: UUID) {
+        xlogPrivateKeys[profileID.uuidString] = privateKey
+        persistXlogPrivateKeys()
+    }
+
+    func xlogPrivateKey(for profileID: UUID) -> Data? {
+        xlogPrivateKeys[profileID.uuidString]
     }
 
     func upsert(profile: LoganProfile) {
@@ -359,7 +372,19 @@ final class AppSettings: ObservableObject {
 
     func remove(profile: LoganProfile) {
         loganProfiles.removeAll { $0.id == profile.id }
+        loganCredentials.removeValue(forKey: profile.id.uuidString)
         persistLoganProfiles()
+        persistLoganCredentials()
+    }
+
+    func saveLoganCredentials(key: Data, iv: Data, for profileID: UUID) {
+        loganCredentials[profileID.uuidString] = StoredLoganCredentials(key: key, iv: iv)
+        persistLoganCredentials()
+    }
+
+    func loganCredentials(for profileID: UUID) -> (key: Data, iv: Data)? {
+        guard let credentials = loganCredentials[profileID.uuidString] else { return nil }
+        return (credentials.key, credentials.iv)
     }
 
     func addZipPatternRule() {
@@ -392,6 +417,14 @@ final class AppSettings: ObservableObject {
 
     private func persistLoganProfiles() {
         defaults.set(try? JSONEncoder().encode(loganProfiles), forKey: Key.loganProfiles)
+    }
+
+    private func persistXlogPrivateKeys() {
+        defaults.set(try? JSONEncoder().encode(xlogPrivateKeys), forKey: Key.xlogPrivateKeys)
+    }
+
+    private func persistLoganCredentials() {
+        defaults.set(try? JSONEncoder().encode(loganCredentials), forKey: Key.loganCredentials)
     }
 
     private func persistZipPatternRules() {

@@ -316,22 +316,33 @@ struct XlogSettingsTests {
         #expect(restored.monitoredFolderURLs == [second])
     }
 
-    @Test("Xlog keychain service supports add, update, and delete")
-    func xlogKeychainLifecycle() throws {
-        let service = "\(KeychainStore.xlogService).tests.\(UUID().uuidString)"
-        let account = UUID().uuidString
-        let store = KeychainStore(service: service)
-        defer { store.remove(account: account) }
+    @Test("Xlog and Logan credentials persist in UserDefaults and follow profile deletion")
+    func credentialPersistence() throws {
+        let suiteName = "XDecodeCredentialPersistenceTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        try store.save(Data([1, 2, 3]), account: account)
-        #expect(try store.read(account: account) == Data([1, 2, 3]))
+        let xlogProfile = XlogProfile(name: "Xlog")
+        let loganProfile = LoganProfile(name: "Logan")
+        let settings = AppSettings(defaults: defaults, defaultMonitoredFolderURL: nil)
+        settings.upsert(profile: xlogProfile)
+        settings.upsert(profile: loganProfile)
+        settings.saveXlogPrivateKey(Data([1, 2, 3]), for: xlogProfile.id)
+        settings.saveLoganCredentials(
+            key: Data("1234567890123456".utf8),
+            iv: Data("abcdefghijklmnop".utf8),
+            for: loganProfile.id
+        )
 
-        try store.save(Data([4, 5, 6]), account: account)
-        #expect(try store.read(account: account) == Data([4, 5, 6]))
+        let restored = AppSettings(defaults: defaults, defaultMonitoredFolderURL: nil)
+        #expect(restored.xlogPrivateKey(for: xlogProfile.id) == Data([1, 2, 3]))
+        #expect(restored.loganCredentials(for: loganProfile.id)?.key == Data("1234567890123456".utf8))
+        #expect(restored.loganCredentials(for: loganProfile.id)?.iv == Data("abcdefghijklmnop".utf8))
 
-        store.remove(account: account)
-        #expect(throws: (any Error).self) {
-            try store.read(account: account)
-        }
+        restored.remove(profile: xlogProfile)
+        restored.remove(profile: loganProfile)
+        let removed = AppSettings(defaults: defaults, defaultMonitoredFolderURL: nil)
+        #expect(removed.xlogPrivateKey(for: xlogProfile.id) == nil)
+        #expect(removed.loganCredentials(for: loganProfile.id) == nil)
     }
 }

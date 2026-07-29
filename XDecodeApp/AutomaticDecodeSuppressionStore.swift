@@ -35,10 +35,9 @@ actor AutomaticDecodeSuppressionStore: ZipOutputPublicationTracking {
         if let fileURL {
             self.fileURL = fileURL
         } else {
-            let base = fileManager.containerURL(
-                forSecurityApplicationGroupIdentifier: SharedContainer.identifier
-            ) ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
                 .appendingPathComponent("XDecode", isDirectory: true)
+            try? fileManager.createDirectory(at: base, withIntermediateDirectories: true)
             self.fileURL = base.appendingPathComponent("automatic-decode-suppressions.json")
         }
 

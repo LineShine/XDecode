@@ -7,10 +7,10 @@
 XDecode 是 macOS 13+ 的日志解密 App，包含三个边界清晰的部分：
 
 - `XDecodeCore`：纯解码逻辑、请求/结果模型，以及单文件和 ZIP 的文件发布流程。
-- `XDecodeApp`：SwiftUI、任务编排、权限、设置、Keychain、FSEvents、通知和历史。
-- `XDecodeFinder`：Finder Sync 入口，只筛选文件并交给主 App，不实现解密。
+- `XDecodeApp`：SwiftUI、任务编排、权限、设置、FSEvents、通知和历史。
+- `XDecodeFinder`：Finder Sync 入口，只转发普通文件给主 App，不实现解密或读取主 App 设置。
 
-保持解码器可独立测试。不要把 AppKit、SwiftUI、Keychain、书签或通知依赖引入 `XDecodeCore`。
+保持解码器可独立测试。不要把 AppKit、SwiftUI、UserDefaults、书签或通知依赖引入 `XDecodeCore`。
 
 ## 常用命令
 
@@ -29,7 +29,7 @@ swift build
 xcodebuild -project XDecode.xcodeproj -scheme XDecode -configuration Debug build
 ```
 
-Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDecodeCore`、`XDecodeApp` 或测试时，至少运行 `swift test`。涉及工程配置、Entitlements、Info.plist、Finder 扩展或打包时，再运行 `xcodebuild` 并说明签名环境。
+Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XDecodeApp` 或测试时，至少运行 `swift test`。涉及工程配置、Entitlements、Info.plist、Finder 扩展或打包时，再运行 `xcodebuild` 并说明签名环境。
 
 不要依赖 Xcode Scheme 运行 Package 测试；当前测试目标由 `Package.swift` 管理。
 
@@ -49,15 +49,14 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 ### `XDecodeApp`
 
 - `AppModel.swift` 是统一编排入口；所有 UI/Finder/FSEvents 输入最终都进入 `enqueue`/`process`。
-- `AppSettings.swift` 管理 UserDefaults 元数据、文件名规则和监控目录书签。
-- `KeychainStore.swift` 只存 Xlog/Logan 密钥正文。
+- `AppSettings.swift` 通过主 App 的标准 `UserDefaults` 管理元数据、Xlog/Logan 密钥、文件名规则和监控目录书签。
 - `FolderMonitor.swift` 只报告新增普通文件；格式过滤由 `AppModel`/`AppSettings` 完成。
 - `AutomaticDecodeSuppressionStore.swift` 防止监控器重新处理 ZIP 自己发布的输出。
 - `HistoryStore.swift` 只保留 30 天 `DecodeResult`，不得写入密钥或日志正文。
 
 ### `XDecodeFinder`
 
-`FinderSync.swift` 读取共享 App Group 的文件名设置并把选中 URL 交给主 App。这里复制了部分 `AppSettings` 匹配逻辑；修改默认规则、迁移键或通配符语义时，必须同步检查两处。
+`FinderSync.swift` 不读取主 App 设置，只筛选普通文件并把选中 URL 交给主 App。格式和文件名规则统一由主 App 的 `AppSettings` 判断，Finder 扩展不得复制匹配逻辑或访问密钥。
 
 ## 不可破坏的行为
 
@@ -145,10 +144,10 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 
 ## 数据与安全
 
-- 不得在源码、测试 fixture、README、日志、`UserDefaults`、通知或 `DecodeResult` 中加入真实私钥、AES Key/IV 或用户日志正文。
+- 不得在源码、测试 fixture、README、日志、通知、`DecodeResult` 或 Finder 扩展中加入真实私钥、AES Key/IV 或用户日志正文。
 - `script/xlog_crypt_log.py` 含协议参考用常量，不能把它当生产密钥来源，也不要把用户提供的密钥写回脚本。
-- Xlog/Logan 方案元数据放共享 `UserDefaults`，密钥正文只放对应 Keychain service。
-- 主 App 与 Finder 扩展必须保持相同 App Group；当前通过 `APP_GROUP_IDENTIFIER = $(DEVELOPMENT_TEAM).com.flat.x.decode` 使用 Team ID 前缀，避免 macOS 15 对未授权旧式共享组反复询问。两个 target 的 `SystemCapabilities` 都必须启用 App Groups；改 Bundle ID/App Group 时同步工程、entitlements、Info.plist、运行时 suite 和容器访问。
+- Xlog/Logan 方案元数据和密钥正文只允许通过 `AppSettings` 写入主 App 的标准 `UserDefaults`；密钥不得复制到展示模型、历史、通知或 Finder 扩展。
+- 主 App 与 Finder 扩展不使用 App Group，也不共享 `UserDefaults` 或文件容器。Finder 扩展只转发文件 URL，主 App 负责匹配和解密。
 - `~/Downloads` 使用 `com.apple.security.files.downloads.read-write` 和独立持久化开关，不进入 security-scoped bookmark 列表；不要把静态文件权限扩大到下载目录之外。
 - Downloads 以外的文件授权通过 app-scoped security bookmark 持久化。不要扩大沙盒权限来规避书签流程。
 - 二进制解析必须通过有边界检查的读取方法；对来自文件的长度做溢出和上限验证后才能分配内存。
@@ -190,5 +189,5 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 2. `swift test` 通过，或已准确记录无法运行的原因。
 3. 没有泄露密钥、日志正文或扩大的文件权限。
 4. 源文件删除和 ZIP 保留策略没有回归。
-5. App 与 Finder 的规则、App Group 和用户文案保持同步。
+5. Finder 只转发普通文件，格式规则和用户文案以主 App 为准。
 6. 架构或使用方式变化时已更新 `README.md` 和本文件。
