@@ -94,7 +94,7 @@ struct NotificationManagerTests {
         #expect(titles.contains("✅ sample.xlog (耗时 10 ms) 解密成功"))
         #expect(titles.contains("❌ sample.xlog (耗时 10 ms) 缺少匹配密钥"))
         #expect(titles.contains("检查更新"))
-        #expect(titles.contains("设置…"))
+        #expect(titles.contains("设置"))
         #expect(!titles.contains { $0.contains("已跳过") })
         #expect(!titles.contains { $0.contains("· 完成") || $0.contains("· 失败") })
     }
