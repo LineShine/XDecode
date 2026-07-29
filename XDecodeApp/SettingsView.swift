@@ -48,10 +48,7 @@ struct SettingsView: View {
                     get: { settings.notificationsEnabled },
                     set: { model.setNotificationsEnabled($0) }
                 ))
-                Toggle("菜单栏显示", isOn: Binding(
-                    get: { settings.menuBarEnabled },
-                    set: { model.setMenuBarEnabled($0) }
-                ))
+                updateRow
             }
 
             Section {
@@ -157,6 +154,31 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("设置")
+        .alert(item: Binding(
+            get: { model.updateCheckPresentation },
+            set: { if $0 == nil { model.dismissUpdateCheckPresentation() } }
+        )) { presentation in
+            if let releaseURL = presentation.releaseURL {
+                return Alert(
+                    title: Text(presentation.title),
+                    message: Text(presentation.message),
+                    primaryButton: .default(Text("前往下载")) {
+                        model.openUpdatePage(releaseURL)
+                        model.dismissUpdateCheckPresentation()
+                    },
+                    secondaryButton: .cancel(Text("稍后")) {
+                        model.dismissUpdateCheckPresentation()
+                    }
+                )
+            }
+            return Alert(
+                title: Text(presentation.title),
+                message: Text(presentation.message),
+                dismissButton: .default(Text("好")) {
+                    model.dismissUpdateCheckPresentation()
+                }
+            )
+        }
         .sheet(item: $editingXlogProfile) { profile in
             XlogProfileEditor(
                 profile: profile,
@@ -186,6 +208,30 @@ struct SettingsView: View {
                 editingLoganProfile = nil
             }
         }
+    }
+
+    private var updateRow: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("检查更新")
+                Text("当前版本 \(model.currentVersion)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 16)
+
+            Button {
+                model.checkForUpdates()
+            } label: {
+                Label(
+                    model.isCheckingForUpdates ? "正在检查…" : "检查更新",
+                    systemImage: "arrow.clockwise"
+                )
+            }
+            .disabled(model.isCheckingForUpdates)
+        }
+        .padding(.vertical, 2)
     }
 }
 

@@ -131,6 +131,29 @@ struct ZipDecodeCoordinatorTests {
         #expect(result.message.contains("没有符合当前规则"))
     }
 
+    @Test("ZIP files larger than 500 MB are rejected before opening")
+    func rejectsOversizedArchive() async throws {
+        let directory = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("oversized.zip")
+        try Data().write(to: source)
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.truncate(atOffset: DecodeLimits.maximumInputFileSize + 1)
+        try handle.close()
+
+        let coordinator = ZipDecodeCoordinator { request in
+            PassthroughDecoder(format: request.format)
+        }
+        let result = await coordinator.decode(
+            try DecodeRequest(sourceURL: source, format: .zip, origin: .automatic)
+        )
+
+        #expect(result.state == .failed)
+        #expect(result.outputURL == nil)
+        #expect(result.message.contains("500 MB"))
+        #expect(FileManager.default.fileExists(atPath: source.path))
+    }
+
     @Test("CRC mismatch fails the batch without creating output")
     func rejectsCRCMismatch() async throws {
         let directory = try makeTemporaryDirectory()

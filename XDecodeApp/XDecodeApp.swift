@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import SwiftUI
 import XDecodeCore
 
@@ -48,30 +49,65 @@ struct XDecodeApp: App {
     }
 }
 
+struct InitialWindowPresentationState {
+    private(set) var isPending = true
+    private var shouldSuppress = false
+
+    mutating func receiveOpenURLs() -> Bool {
+        guard isPending else { return false }
+        shouldSuppress = true
+        return true
+    }
+
+    mutating func resolve() -> Bool? {
+        guard isPending else { return nil }
+        isPending = false
+        return !shouldSuppress
+    }
+
+    mutating func forcePresentation() {
+        isPending = false
+        shouldSuppress = false
+    }
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hasFinishedLaunching = false
-    private var shouldSuppressInitialWindow = false
+    private var initialWindowPresentation = InitialWindowPresentationState()
+    private var initialWindowDecisionTask: Task<Void, Never>?
+    private var isFlushingBeforeTermination = false
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        LSRegisterURL(Bundle.main.bundleURL as CFURL, true)
+        NSApp.setActivationPolicy(.accessory)
         AppModel.shared.prepareNotifications()
         AppModel.shared.setMainWindowPresenter { [weak self] in
             guard self != nil else { return }
-            MainWindowVisibilityCoordinator.shared.present()
+            self?.presentMainWindow()
         }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         hasFinishedLaunching = true
         AppModel.shared.launch()
-        MainWindowVisibilityCoordinator.shared.completeLaunch(
-            shouldPresent: !shouldSuppressInitialWindow
-        )
+        // LaunchServices can deliver open-URL events just after didFinishLaunching.
+        // Keep SwiftUI's initial window transparent until that event has settled.
+        initialWindowDecisionTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+            } catch {
+                return
+            }
+            guard let self,
+                  let shouldPresent = initialWindowPresentation.resolve() else { return }
+            initialWindowDecisionTask = nil
+            MainWindowVisibilityCoordinator.shared.completeLaunch(shouldPresent: shouldPresent)
+        }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        if !hasFinishedLaunching {
-            shouldSuppressInitialWindow = true
+        if initialWindowPresentation.receiveOpenURLs() {
             MainWindowVisibilityCoordinator.shared.suppress()
         }
         AppModel.shared.enqueue(urls, origin: .openWith)
@@ -82,12 +118,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hasVisibleWindows flag: Bool
     ) -> Bool {
         guard hasFinishedLaunching else { return false }
-        MainWindowVisibilityCoordinator.shared.present()
+        presentMainWindow()
         return false
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !isFlushingBeforeTermination else { return .terminateLater }
+        isFlushingBeforeTermination = true
+        Task {
+            await AppModel.shared.flushPendingPersistence()
+            sender.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
+    }
+
+    private func presentMainWindow() {
+        initialWindowDecisionTask?.cancel()
+        initialWindowDecisionTask = nil
+        initialWindowPresentation.forcePresentation()
+        MainWindowVisibilityCoordinator.shared.present()
     }
 }
 
@@ -125,7 +178,7 @@ final class MainWindowVisibilityCoordinator {
     func present() {
         state = .presented
         guard let window else { return }
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(.accessory)
         window.alphaValue = 1
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

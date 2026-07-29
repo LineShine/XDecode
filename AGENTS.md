@@ -50,9 +50,10 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 
 - `AppModel.swift` 是统一编排入口；所有 UI/Finder/FSEvents 输入最终都进入 `enqueue`/`process`。
 - `AppSettings.swift` 通过主 App 的标准 `UserDefaults` 管理元数据、Xlog/Logan 密钥、文件名规则和监控目录书签。
-- `FolderMonitor.swift` 只报告新增普通文件；格式过滤由 `AppModel`/`AppSettings` 完成。
+- `FolderMonitor.swift` 直接消费 FSEvents 变更路径并只报告新增普通文件；仅在事件丢失时恢复性全量扫描，格式过滤由 `AppModel`/`AppSettings` 在稳定性检查前完成。
 - `AutomaticDecodeSuppressionStore.swift` 防止监控器重新处理 ZIP 自己发布的输出。
-- `HistoryStore.swift` 只保留 30 天 `DecodeResult`，不得写入密钥或日志正文。
+- `HistoryStore.swift` 在内存中提供最近 30 条，磁盘最多保留 200 条且不超过 30 天；使用 1 秒防抖、最长 5 秒强制写入并在退出前刷新，不得写入密钥或日志正文。
+- `UpdateChecker.swift` 只读取 `LineShine/XDecode` 的 GitHub Releases 元数据并比较版本，不负责下载或安装。
 
 ### `XDecodeFinder`
 
@@ -80,7 +81,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 - 部分成功和全部日志解密失败都发布输出目录；压缩包本身检查失败时不发布目录。
 - ZIP 中没有符合当前规则的日志时返回 `skipped`，主 App 必须静默忽略，不写历史、最近处理或菜单栏最近任务，也不发送通知。
 - 发布目录同样必须排他命名，不能覆盖已有目录。
-- 在放宽任何限制前先做威胁分析。当前限制为 1,000 个条目、100 个日志、单条目 512 MB、总计 1 GB。
+- 在放宽任何限制前先做威胁分析。当前限制为源 ZIP 500 MB、1,000 个条目、100 个日志、单条目 500 MB、ZIP 总计 1 GB；单个解密任务的日志解压输出最大 1 GiB。
 - 必须保留 Zip Slip、绝对路径、NUL、Windows 盘符、大小写重复路径、解压大小、CRC 和实际大小校验。
 - ZIP 输出位于被监控目录时，必须先登记 suppression，再重命名 staging 目录，避免自动解密回环。
 
@@ -112,7 +113,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 
 ## 文件名识别
 
-默认规则：Xlog `*.xlog`，MX `*.mx`，Logan `yyyy-MM-dd`，ZIP `^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$`。
+默认规则：Xlog `*.xlog`，MX `*.mx`，Logan `yyyy-MM-dd`，ZIP `^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$`。
 
 - 规则不区分大小写。
 - 非 `^` 开头的规则会转成全文件名匹配，支持 `*`、`?`、`yyyy`、`MM`、`dd`。
@@ -135,7 +136,9 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 - UI 状态、`AppModel`、`AppSettings`、FSEvents 控制器和通知中心留在 `@MainActor`。
 - 不要用 `nonisolated(unsafe)` 绕过新问题；`FolderMonitor.stream` 是 Core Foundation 回调生命周期的局部例外。
 - `activeSourcePaths` 防止同一路径并发重复处理，任何新增入口都必须经过 `AppModel.enqueue`。
-- 主界面使用单实例 SwiftUI `Window`，以保留 `NavigationSplitView` 的原生工具栏定位。窗口挂载时由 `MainWindowVisibilityCoordinator` 在首帧前控制透明度；通过“打开方式”冷启动时保持不可见，普通启动、Dock 重新打开和菜单栏入口才显示主窗口。
+- 解密任务队列不限制等待数量，最大并发为 2；新增入口不得绕过队列直接调用协调器。
+- 主界面使用单实例 SwiftUI `Window`，以保留 `NavigationSplitView` 的原生工具栏定位。主 App 通过 `LSMultipleInstancesProhibited` 禁止重复实例，Finder 入口必须显式复用运行实例；独立的 `XDecodeFinder` 扩展进程不计作主 App 实例。
+- 主 App 通过 `LSUIElement` 和 `.accessory` 固定为菜单栏 App，不得切换回 `.regular` 或出现在程序坞。菜单栏状态项必须常驻，不提供隐藏开关。窗口挂载时由 `MainWindowVisibilityCoordinator` 在首帧前控制透明度；通过“打开方式”冷启动时保持不可见，普通启动、重新打开 App 和菜单栏入口才显示主窗口。
 - 关闭最后一个窗口不得终止 App；自动监听和菜单栏入口必须继续在后台运行。只有系统 `Command-Q` 和菜单栏“退出 XDecode”可以终止进程。
 - Security-scoped access 必须成对结束。异步任务的所有退出路径都要释放文件 URL 和授权目录访问。
 - 首次安装默认启用自动解密，并通过 Downloads entitlement 将 `~/Downloads` 作为静态授权监控目录；不要为该目录创建 security-scoped bookmark。用户显式关闭或移除目录后不得在后续启动中重新补回。
@@ -150,6 +153,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 - 主 App 与 Finder 扩展不使用 App Group，也不共享 `UserDefaults` 或文件容器。Finder 扩展只转发文件 URL，主 App 负责匹配和解密。
 - `~/Downloads` 使用 `com.apple.security.files.downloads.read-write` 和独立持久化开关，不进入 security-scoped bookmark 列表；不要把静态文件权限扩大到下载目录之外。
 - Downloads 以外的文件授权通过 app-scoped security bookmark 持久化。不要扩大沙盒权限来规避书签流程。
+- 出站网络权限只用于用户主动触发的 GitHub Releases 更新检查，不要在后台轮询或上传任何本地数据。
 - 二进制解析必须通过有边界检查的读取方法；对来自文件的长度做溢出和上限验证后才能分配内存。
 
 ## 测试策略
@@ -165,7 +169,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 | MX/二进制读取 | `DecoderFixtureTests`、`DecoderValidationTests` |
 | 单文件发布/删除 | `DecodeCoordinatorTests` |
 | ZIP | `ZipDecodeCoordinatorTests`、`AutomaticDecodeSuppressionStoreTests` |
-| 匹配和设置 | `XlogSettingsTests` |
+| 匹配和设置 | `XlogSettingsTests`、`UpdateCheckerTests` |
 | 文件权限/监听 | `FolderAccessStoreTests`、`FolderMonitorTests` |
 | 通知/菜单栏摘要 | `NotificationManagerTests` |
 

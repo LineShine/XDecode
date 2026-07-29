@@ -25,6 +25,7 @@ public actor DecodeCoordinator {
             guard fileManager.fileExists(atPath: sourceURL.path) else {
                 throw DecodeError.fileOperation("源文件不存在")
             }
+            try DecodeLimits.validateInputFile(at: sourceURL, description: "源文件")
 
             let input = try Data(contentsOf: sourceURL, options: .mappedIfSafe)
             let decoder = try await decoderResolver(request)
@@ -40,6 +41,10 @@ public actor DecodeCoordinator {
                 )
             }
             guard !decoded.data.isEmpty else { throw DecodeError.emptyOutput }
+            try DecodeLimits.validateDecompressedOutputSize(
+                currentSize: 0,
+                appending: decoded.data.count
+            )
 
             try decoded.data.write(to: temporaryURL)
             let handle = try FileHandle(forWritingTo: temporaryURL)

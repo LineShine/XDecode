@@ -1,5 +1,6 @@
 import CZlib
 import Foundation
+import SwiftZSTD
 import Testing
 @testable import XDecodeCore
 
@@ -27,6 +28,40 @@ struct XlogSyncFlushTests {
 
         #expect(throws: (any Error).self) {
             try CompressionUtilities.inflateRaw(compressed)
+        }
+    }
+
+    @Test("Raw-deflate output is rejected before exceeding the configured limit")
+    func rejectsOutputBeyondLimit() throws {
+        let expected = Data(repeating: 0x41, count: 128 * 1024)
+        let compressed = try deflateSyncFlushed(expected)
+
+        let error = #expect(throws: DecodeError.self) {
+            try CompressionUtilities.inflateRaw(
+                compressed,
+                maximumOutputSize: expected.count - 1
+            )
+        }
+        guard case .outputLimitExceeded = error else {
+            Issue.record("Expected outputLimitExceeded")
+            return
+        }
+    }
+
+    @Test("Zstd output is rejected from its declared size before decompression")
+    func rejectsZstdOutputBeyondLimit() throws {
+        let expected = Data(repeating: 0x42, count: 128 * 1024)
+        let compressed = try ZSTDProcessor().compressBuffer(expected, compressionLevel: 3)
+
+        let error = #expect(throws: DecodeError.self) {
+            try CompressionUtilities.zstd(
+                compressed,
+                maximumOutputSize: expected.count - 1
+            )
+        }
+        guard case .outputLimitExceeded = error else {
+            Issue.record("Expected outputLimitExceeded")
+            return
         }
     }
 

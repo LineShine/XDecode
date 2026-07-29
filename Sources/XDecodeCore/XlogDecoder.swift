@@ -46,7 +46,15 @@ public struct XlogDecoder: LogDecoder {
             if frame.sequence != 0 { previousSequence = frame.sequence }
 
             do {
-                let decoded = try decodePayload(frame, preferredCredentialIndex: &preferredCredentialIndex)
+                let decoded = try decodePayload(
+                    frame,
+                    preferredCredentialIndex: &preferredCredentialIndex,
+                    maximumOutputSize: DecodeLimits.maximumDecompressedOutputSize - output.count
+                )
+                try DecodeLimits.validateDecompressedOutputSize(
+                    currentSize: output.count,
+                    appending: decoded.count
+                )
                 output.append(decoded)
                 diagnostics.successfulFrames += 1
             } catch PayloadError.missingCredentials {
@@ -55,6 +63,8 @@ public struct XlogDecoder: LogDecoder {
             } catch PayloadError.noCredentialSucceeded {
                 diagnostics.failedFrames += 1
                 diagnostics.rejectedKeyFrames += 1
+            } catch DecodeError.outputLimitExceeded {
+                throw DecodeError.outputLimitExceeded
             } catch {
                 diagnostics.failedFrames += 1
                 diagnostics.invalidPayloadFrames += 1
@@ -86,10 +96,15 @@ public struct XlogDecoder: LogDecoder {
 
     private func decodePayload(
         _ frame: Frame,
-        preferredCredentialIndex: inout Int?
+        preferredCredentialIndex: inout Int?,
+        maximumOutputSize: Int
     ) throws -> Data {
         guard frame.magic.requiresECDH else {
-            return try decompress(frame.payload, magic: frame.magic)
+            return try decompress(
+                frame.payload,
+                magic: frame.magic,
+                maximumOutputSize: maximumOutputSize
+            )
         }
         guard !credentials.isEmpty else { throw PayloadError.missingCredentials }
 
@@ -107,9 +122,15 @@ public struct XlogDecoder: LogDecoder {
                     privateKeyData: credentials[index].privateKey
                 )
                 let decrypted = TEA.decrypt(frame.payload, key: teaKey)
-                let decoded = try decompress(decrypted, magic: frame.magic)
+                let decoded = try decompress(
+                    decrypted,
+                    magic: frame.magic,
+                    maximumOutputSize: maximumOutputSize
+                )
                 preferredCredentialIndex = index
                 return decoded
+            } catch DecodeError.outputLimitExceeded {
+                throw DecodeError.outputLimitExceeded
             } catch {
                 continue
             }
@@ -117,15 +138,33 @@ public struct XlogDecoder: LogDecoder {
         throw PayloadError.noCredentialSucceeded
     }
 
-    private func decompress(_ payload: Data, magic: XlogMagic) throws -> Data {
+    private func decompress(
+        _ payload: Data,
+        magic: XlogMagic,
+        maximumOutputSize: Int
+    ) throws -> Data {
         switch magic {
         case .compress, .compressNoCrypt, .compressECDH:
-            return try CompressionUtilities.inflateRaw(payload)
+            return try CompressionUtilities.inflateRaw(
+                payload,
+                maximumOutputSize: maximumOutputSize
+            )
         case .compressChunked:
-            return try CompressionUtilities.inflateRaw(try joinChunkedPayload(payload))
+            return try CompressionUtilities.inflateRaw(
+                try joinChunkedPayload(payload),
+                maximumOutputSize: maximumOutputSize
+            )
         case .syncZstdCrypt, .syncZstdNoCrypt, .asyncZstdCrypt, .asyncZstdNoCrypt:
-            return try CompressionUtilities.zstd(payload)
+            return try CompressionUtilities.zstd(
+                payload,
+                maximumOutputSize: maximumOutputSize
+            )
         case .noCompress, .noCompressExtended, .noCompressNoCrypt:
+            try DecodeLimits.validateDecompressedOutputSize(
+                currentSize: 0,
+                appending: payload.count,
+                maximumSize: maximumOutputSize
+            )
             return payload
         }
     }

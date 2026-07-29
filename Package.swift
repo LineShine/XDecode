@@ -37,6 +37,7 @@ let package = Package(
             exclude: ["Assets.xcassets", "Info.plist", "XDecode.entitlements"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("CoreServices"),
                 .linkedFramework("ServiceManagement"),
                 .linkedFramework("UserNotifications"),
             ]
@@ -46,6 +47,7 @@ let package = Package(
             dependencies: [
                 "XDecodeCore",
                 "CZlib",
+                .product(name: "SwiftZSTD", package: "SwiftZSTD"),
                 .product(name: "P256K", package: "swift-secp256k1"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]

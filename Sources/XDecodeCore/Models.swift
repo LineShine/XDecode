@@ -164,6 +164,7 @@ public enum DecodeError: LocalizedError, Sendable {
     case missingCredentials(LogFormat)
     case decodingFailed(String)
     case decompressionFailed(String)
+    case outputLimitExceeded
     case decryptionFailed(String)
     case emptyOutput
     case fileOperation(String)
@@ -188,6 +189,8 @@ public enum DecodeError: LocalizedError, Sendable {
             return message
         case .decompressionFailed(let message):
             return "解压失败：\(message)"
+        case .outputLimitExceeded:
+            return "解压输出超过单任务 1 GiB 大小限制"
         case .decryptionFailed(let message):
             return "解密失败：\(message)"
         case .emptyOutput:

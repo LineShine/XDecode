@@ -22,7 +22,7 @@ public actor ZipDecodeCoordinator {
     private let publicationTracker: (any ZipOutputPublicationTracking)?
     private let maximumArchiveEntryCount = 1_000
     private let maximumLogCount = 100
-    private let maximumEntrySize: UInt64 = 512 * 1024 * 1024
+    private let maximumEntrySize = DecodeLimits.maximumInputFileSize
     private let maximumTotalSize: UInt64 = 1024 * 1024 * 1024
 
     public init(
@@ -50,6 +50,7 @@ public actor ZipDecodeCoordinator {
             guard fileManager.fileExists(atPath: sourceURL.path) else {
                 throw DecodeError.fileOperation("源 ZIP 不存在")
             }
+            try DecodeLimits.validateInputFile(at: sourceURL, description: "源 ZIP")
 
             let archive: Archive
             do {
@@ -89,6 +90,7 @@ public actor ZipDecodeCoordinator {
             }
 
             var decodedCount = 0
+            var decodedOutputSize = 0
             var failedLogNames = [String]()
             for item in items {
                 guard let format = item.format else { continue }
@@ -110,6 +112,10 @@ public actor ZipDecodeCoordinator {
                         throw DecodeError.decodingFailed(decoded.diagnostic ?? "日志未完整解密")
                     }
                     guard !decoded.data.isEmpty else { throw DecodeError.emptyOutput }
+                    try DecodeLimits.validateDecompressedOutputSize(
+                        currentSize: decodedOutputSize,
+                        appending: decoded.data.count
+                    )
 
                     let outputURL = uniqueDecodedOutput(
                         for: item.relativePath,
@@ -117,6 +123,7 @@ public actor ZipDecodeCoordinator {
                     )
                     decodedOutputURL = outputURL
                     try write(decoded.data, to: outputURL)
+                    decodedOutputSize += decoded.data.count
                     decodedCount += 1
                 } catch {
                     if let decodedOutputURL {
@@ -200,7 +207,7 @@ public actor ZipDecodeCoordinator {
 
             if entry.type != .directory {
                 guard entry.uncompressedSize <= maximumEntrySize else {
-                    throw DecodeError.decodingFailed("ZIP 条目过大：\(relativePath)")
+                    throw DecodeError.decodingFailed("ZIP 条目超过 500 MB：\(relativePath)")
                 }
                 let (newTotal, overflow) = totalSize.addingReportingOverflow(entry.uncompressedSize)
                 guard !overflow, newTotal <= maximumTotalSize else {

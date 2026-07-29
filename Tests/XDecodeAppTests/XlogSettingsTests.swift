@@ -33,7 +33,6 @@ struct XlogSettingsTests {
         let settings = AppSettings(defaults: defaults)
 
         #expect(settings.notificationsEnabled)
-        #expect(settings.menuBarEnabled)
         #expect(settings.mxFilePattern == "*.mx")
         #expect(settings.zipPatternRules.map(\.pattern) == [FilenamePatternDefaults.zip])
         #expect(settings.logFormat(for: URL(fileURLWithPath: "/tmp/demo.xlog")) == .xlog)
@@ -41,6 +40,8 @@ struct XlogSettingsTests {
         #expect(settings.logFormat(for: URL(fileURLWithPath: "/tmp/2026-07-27")) == .logan)
         #expect(settings.logFormat(for: URL(fileURLWithPath: "/tmp/2026-7-27")) == nil)
         let supportedZIPNames = [
+            "a_b.zip",
+            "abc-def.ZIP",
             "1520_1785225610163.zip",
             "f9017f94-25e8-4366-b33b-ebc7d8af1d65.zip",
             "338911075_20059056_1logs.zip",
@@ -53,6 +54,11 @@ struct XlogSettingsTests {
         }
 
         let unsupportedZIPNames = [
+            "archive.zip",
+            "_archive.zip",
+            "archive_.zip",
+            "abc--def.zip",
+            "abc_-def.zip",
             "user cache.zip",
             "user.cache.zip",
             "user@cache.zip",
@@ -73,15 +79,12 @@ struct XlogSettingsTests {
         let initial = AppSettings(defaults: defaults)
         #expect(initial.launchAtLoginEnabled)
         #expect(initial.notificationsEnabled)
-        #expect(initial.menuBarEnabled)
 
         initial.launchAtLoginEnabled = false
         initial.notificationsEnabled = false
-        initial.menuBarEnabled = false
         let restored = AppSettings(defaults: defaults)
         #expect(!restored.launchAtLoginEnabled)
         #expect(!restored.notificationsEnabled)
-        #expect(!restored.menuBarEnabled)
     }
 
     @Test("Automatic decoding defaults to Downloads and explicit removal persists")
@@ -194,12 +197,11 @@ struct XlogSettingsTests {
         #expect(defaults.bool(forKey: "defaultDownloadsMonitoringEnabled"))
     }
 
-    @Test("ZIP rules migrate, support additions, persist, and match independently")
-    func migratesLegacyDefaults() throws {
+    @Test("ZIP rules support additions, persist, and match independently")
+    func zipRulePersistence() throws {
         let suiteName = "XDecodePatternMigrationTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
-        defaults.set("*_*.zip", forKey: "zipFilePattern")
         let oldProfile = LoganProfile(name: "Legacy", filePattern: "*.logan")
         defaults.set(try JSONEncoder().encode([oldProfile]), forKey: "loganProfiles")
 
@@ -230,31 +232,6 @@ struct XlogSettingsTests {
         restored.resetZipPatternRule(id: remainingRule.id)
         #expect(restored.zipPatternRules.map(\.pattern) == [FilenamePatternDefaults.zip])
         #expect(restored.matchesZipFile(URL(fileURLWithPath: "/tmp/123_456.zip")))
-    }
-
-    @Test("Previous numeric ZIP default migrates while custom rules remain unchanged")
-    func migratesPreviousZipDefault() throws {
-        let suiteName = "XDecodePreviousZipPatternTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
-
-        let customPattern = #"^custom\..+\.zip$"#
-        defaults.set(try JSONEncoder().encode([
-            ZipPatternRule(pattern: FilenamePatternDefaults.previousZip),
-            ZipPatternRule(pattern: customPattern),
-        ]), forKey: "zipPatternRules")
-
-        let migrated = AppSettings(defaults: defaults)
-        #expect(migrated.zipPatternRules.map(\.pattern) == [
-            FilenamePatternDefaults.zip,
-            customPattern,
-        ])
-
-        let restored = AppSettings(defaults: defaults)
-        #expect(restored.zipPatternRules.map(\.pattern) == [
-            FilenamePatternDefaults.zip,
-            customPattern,
-        ])
     }
 
     @Test("Logan date templates and explicit regular expressions match full filenames")

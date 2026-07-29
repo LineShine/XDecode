@@ -5,8 +5,7 @@ enum FilenamePatternDefaults {
     static let xlog = "*.xlog"
     static let logan = "yyyy-MM-dd"
     static let mx = "*.mx"
-    static let zip = #"^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
-    static let previousZip = #"^[0-9]+_[0-9]+\.zip$"#
+    static let zip = #"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
 }
 
 enum FilenamePattern {
@@ -113,7 +112,6 @@ final class AppSettings: ObservableObject {
         static let defaultDownloadsMonitoringEnabled = "defaultDownloadsMonitoringEnabled"
         static let launchAtLoginEnabled = "launchAtLoginEnabled"
         static let notificationsEnabled = "notificationsEnabled"
-        static let menuBarEnabled = "menuBarEnabled"
         static let monitoredFolderBookmark = "monitoredFolderBookmark"
         static let monitoredFolderBookmarks = "monitoredFolderBookmarks"
         static let xlogProfiles = "xlogProfiles"
@@ -121,7 +119,6 @@ final class AppSettings: ObservableObject {
         static let xlogPrivateKeys = "xlogPrivateKeys"
         static let loganCredentials = "loganCredentials"
         static let mxFilePattern = "mxFilePattern"
-        static let zipFilePattern = "zipFilePattern"
         static let zipPatternRules = "zipPatternRules"
     }
 
@@ -133,7 +130,6 @@ final class AppSettings: ObservableObject {
     @Published var automaticEnabled: Bool { didSet { defaults.set(automaticEnabled, forKey: Key.automaticEnabled) } }
     @Published var launchAtLoginEnabled: Bool { didSet { defaults.set(launchAtLoginEnabled, forKey: Key.launchAtLoginEnabled) } }
     @Published var notificationsEnabled: Bool { didSet { defaults.set(notificationsEnabled, forKey: Key.notificationsEnabled) } }
-    @Published var menuBarEnabled: Bool { didSet { defaults.set(menuBarEnabled, forKey: Key.menuBarEnabled) } }
     @Published var mxFilePattern: String { didSet { defaults.set(mxFilePattern, forKey: Key.mxFilePattern) } }
     @Published private(set) var defaultDownloadsMonitoringEnabled: Bool {
         didSet { defaults.set(defaultDownloadsMonitoringEnabled, forKey: Key.defaultDownloadsMonitoringEnabled) }
@@ -176,27 +172,12 @@ final class AppSettings: ObservableObject {
         notificationsEnabled = defaults.object(forKey: Key.notificationsEnabled) == nil
             ? true
             : defaults.bool(forKey: Key.notificationsEnabled)
-        menuBarEnabled = defaults.object(forKey: Key.menuBarEnabled) == nil
-            ? true
-            : defaults.bool(forKey: Key.menuBarEnabled)
         mxFilePattern = defaults.string(forKey: Key.mxFilePattern) ?? FilenamePatternDefaults.mx
 
-        let storedZipPattern = defaults.string(forKey: Key.zipFilePattern)
         if let data = defaults.data(forKey: Key.zipPatternRules),
            let rules = try? JSONDecoder().decode([ZipPatternRule].self, from: data),
            !rules.isEmpty {
-            zipPatternRules = rules.map { rule in
-                guard rule.pattern == FilenamePatternDefaults.previousZip else { return rule }
-                var migratedRule = rule
-                migratedRule.pattern = FilenamePatternDefaults.zip
-                return migratedRule
-            }
-        } else if let storedZipPattern, storedZipPattern != "*_*.zip" {
-            zipPatternRules = [ZipPatternRule(
-                pattern: storedZipPattern == FilenamePatternDefaults.previousZip
-                    ? FilenamePatternDefaults.zip
-                    : storedZipPattern
-            )]
+            zipPatternRules = rules
         } else {
             zipPatternRules = [ZipPatternRule()]
         }
@@ -279,10 +260,6 @@ final class AppSettings: ObservableObject {
             return false
         }
         return zipPatternRules.contains { FilenamePattern.matches($0.pattern, url: url) }
-    }
-
-    var zipPatternSummary: String {
-        zipPatternRules.map(\.pattern).filter { !$0.isEmpty }.joined(separator: "、")
     }
 
     func logFormat(for url: URL, includeZip: Bool = true) -> LogFormat? {

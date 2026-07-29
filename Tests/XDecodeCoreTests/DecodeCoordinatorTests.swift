@@ -76,6 +76,30 @@ struct DecodeCoordinatorTests {
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("broken.log").path))
     }
 
+    @Test("Files larger than 500 MB are rejected before decoding")
+    func rejectsOversizedInput() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let source = directory.appendingPathComponent("oversized.mx")
+        try Data().write(to: source)
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.truncate(atOffset: DecodeLimits.maximumInputFileSize + 1)
+        try handle.close()
+
+        let coordinator = DecodeCoordinator { _ in StubDecoder(output: Data("decoded".utf8)) }
+        let result = await coordinator.decode(
+            try DecodeRequest(sourceURL: source, origin: .automatic)
+        )
+
+        #expect(result.state == .failed)
+        #expect(result.outputURL == nil)
+        #expect(result.message.contains("500 MB"))
+        #expect(FileManager.default.fileExists(atPath: source.path))
+    }
+
     @Test("Malformed Logan preserves the source and creates no output")
     func malformedLoganPreservesSource() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)

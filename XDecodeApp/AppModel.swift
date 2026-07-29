@@ -21,6 +21,13 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     }
 }
 
+struct UpdateCheckPresentation: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let message: String
+    let releaseURL: URL?
+}
+
 struct ScopedFolderAccess {
     let directoryURL: URL
     private let shouldStop: Bool
@@ -181,10 +188,19 @@ final class FolderAccessStore {
 @MainActor
 final class AppModel: ObservableObject {
     static let shared = AppModel()
+    static let maximumConcurrentDecodeTaskCount = 2
+
+    private struct PendingDecodeJob {
+        let url: URL
+        let origin: DecodeOrigin
+        let sourcePath: String
+    }
 
     @Published var selectedSection: SidebarSection = .decode
     @Published private(set) var results: [DecodeResult] = []
     @Published private(set) var activeTaskCount = 0
+    @Published private(set) var isCheckingForUpdates = false
+    @Published private(set) var updateCheckPresentation: UpdateCheckPresentation?
     @Published var bannerMessage: String?
 
     let settings = AppSettings()
@@ -194,10 +210,14 @@ final class AppModel: ObservableObject {
     private let stabilityGate = FileStabilityGate()
     private let notifications = NotificationManager()
     private let statusItem = StatusItemController()
+    private let updateChecker = UpdateChecker()
     private let folderAccess = FolderAccessStore()
     private var pendingFolderAccessRequests: [(URL, DecodeOrigin)] = []
     private var folderAuthorizationInProgress = false
     private var activeSourcePaths = Set<String>()
+    private var decodeTaskQueue = TaskQueue<PendingDecodeJob>(
+        maximumConcurrentCount: AppModel.maximumConcurrentDecodeTaskCount
+    )
     private var notificationAuthorizationTask: Task<Void, Never>?
     private var mainWindowPresenter: (() -> Void)?
 
@@ -226,21 +246,27 @@ final class AppModel: ObservableObject {
         settings.monitoredFolderBookmarks.forEach(folderAccess.importBookmark)
         monitor.onNewFile = { [weak self] url in
             guard let self else { return }
+            guard settings.automaticEnabled else { return }
             Task {
                 if await self.suppressionStore.consumeIfRegistered(url) { return }
+                guard self.settings.automaticEnabled, self.isSupportedInput(url) else { return }
                 if await self.stabilityGate.waitUntilStable(url) {
-                    await MainActor.run {
-                        guard self.settings.automaticEnabled else { return }
-                        self.enqueue([url], origin: .automatic)
-                    }
+                    guard self.settings.automaticEnabled else { return }
+                    self.enqueue([url], origin: .automatic)
                 }
             }
         }
         statusItem.openWindow = { [weak self] in self?.showMainWindow() }
         statusItem.chooseFiles = { [weak self] in self?.chooseFiles() }
+        statusItem.checkForUpdates = { [weak self] in
+            self?.showSettings()
+            self?.checkForUpdates()
+        }
+        statusItem.openSettings = { [weak self] in self?.showSettings() }
     }
 
     func launch() {
+        statusItem.install()
         setLaunchAtLoginEnabled(settings.launchAtLoginEnabled)
         if settings.notificationsEnabled {
             requestNotificationAuthorization(showFailure: false)
@@ -268,15 +294,7 @@ final class AppModel: ObservableObject {
 
     func enqueue(_ urls: [URL], origin: DecodeOrigin) {
         let supported = urls.filter(isSupportedInput)
-        guard !supported.isEmpty else {
-            guard origin != .automatic else { return }
-            if urls.contains(where: { $0.pathExtension.lowercased() == "zip" }) {
-                bannerMessage = "ZIP 文件名不匹配设置中的任一正则规则：\(settings.zipPatternSummary)"
-            } else {
-                bannerMessage = "请选择 xlog、mx、Logan 或符合规则的 ZIP 文件"
-            }
-            return
-        }
+        guard !supported.isEmpty else { return }
 
         let zipInputs = supported.filter { settings.logFormat(for: $0) == .zip }
         zipInputs.forEach { prepareToProcess($0, origin: origin) }
@@ -356,11 +374,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func setMenuBarEnabled(_ enabled: Bool) {
-        settings.menuBarEnabled = enabled
-        refreshStatusItem()
-    }
-
     func setLaunchAtLoginEnabled(_ enabled: Bool) {
         let service = SMAppService.mainApp
         do {
@@ -387,6 +400,54 @@ final class AppModel: ObservableObject {
         } catch {
             bannerMessage = "开机自启动设置失败：\(error.localizedDescription)"
         }
+    }
+
+    var currentVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "未知"
+    }
+
+    func checkForUpdates() {
+        guard !isCheckingForUpdates else { return }
+        isCheckingForUpdates = true
+        statusItem.setCheckingForUpdates(true)
+        let currentVersion = currentVersion
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let availability = try await updateChecker.check(currentVersion: currentVersion)
+                switch availability {
+                case let .updateAvailable(release):
+                    updateCheckPresentation = UpdateCheckPresentation(
+                        title: "发现新版本",
+                        message: "XDecode \(release.version) 已发布，当前版本为 \(currentVersion)。",
+                        releaseURL: release.pageURL
+                    )
+                case .upToDate:
+                    updateCheckPresentation = UpdateCheckPresentation(
+                        title: "已是最新版本",
+                        message: "当前版本 \(currentVersion) 已是最新版本。",
+                        releaseURL: nil
+                    )
+                }
+            } catch {
+                updateCheckPresentation = UpdateCheckPresentation(
+                    title: "检查更新失败",
+                    message: error.localizedDescription,
+                    releaseURL: nil
+                )
+            }
+            isCheckingForUpdates = false
+            statusItem.setCheckingForUpdates(false)
+        }
+    }
+
+    func dismissUpdateCheckPresentation() {
+        updateCheckPresentation = nil
+    }
+
+    func openUpdatePage(_ url: URL) {
+        NSWorkspace.shared.open(url)
     }
 
     func clearHistory() {
@@ -456,9 +517,14 @@ final class AppModel: ObservableObject {
             mainWindowPresenter()
             return
         }
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(.accessory)
         NSApp.activate(ignoringOtherApps: true)
         if let window = NSApp.windows.first { window.makeKeyAndOrderFront(nil) }
+    }
+
+    func showSettings() {
+        selectedSection = .settings
+        showMainWindow()
     }
 
     private func prepareToProcess(_ url: URL, origin: DecodeOrigin) {
@@ -537,30 +603,47 @@ final class AppModel: ObservableObject {
     }
 
     private func process(_ url: URL, origin: DecodeOrigin) {
-        guard let directoryAccess = folderAccess.beginAccess(to: url) else {
-            bannerMessage = "无法访问日志所在文件夹，请重新添加该日志并授权文件夹"
-            return
-        }
         let sourcePath = url.standardizedFileURL.path
         guard activeSourcePaths.insert(sourcePath).inserted else {
-            directoryAccess.stop()
             return
         }
 
+        let job = PendingDecodeJob(url: url, origin: origin, sourcePath: sourcePath)
+        decodeTaskQueue.enqueue(job)
+        drainDecodeTaskQueue()
+    }
+
+    private func drainDecodeTaskQueue() {
+        while let job = decodeTaskQueue.beginNext() {
+            activeTaskCount = decodeTaskQueue.runningCount
+            guard startProcessing(job) else {
+                decodeTaskQueue.finish()
+                activeTaskCount = decodeTaskQueue.runningCount
+                activeSourcePaths.remove(job.sourcePath)
+                continue
+            }
+        }
+    }
+
+    private func startProcessing(_ job: PendingDecodeJob) -> Bool {
+        let url = job.url
+        guard let directoryAccess = folderAccess.beginAccess(to: url) else {
+            bannerMessage = "无法访问日志所在文件夹，请重新添加该日志并授权文件夹"
+            return false
+        }
+
         let scoped = url.startAccessingSecurityScopedResource()
-        activeTaskCount += 1
         Task {
             defer {
                 if scoped { url.stopAccessingSecurityScopedResource() }
                 directoryAccess.stop()
-                activeSourcePaths.remove(sourcePath)
-                activeTaskCount -= 1
+                finishProcessing(job)
             }
             do {
                 guard let format = settings.logFormat(for: url) else {
                     throw DecodeError.unsupportedFormat(url.lastPathComponent)
                 }
-                let request = try DecodeRequest(sourceURL: url, format: format, origin: origin)
+                let request = try DecodeRequest(sourceURL: url, format: format, origin: job.origin)
                 let result: DecodeResult
                 if request.format == .zip {
                     result = await zipCoordinator.decode(request)
@@ -569,6 +652,9 @@ final class AppModel: ObservableObject {
                 }
                 guard result.state != .skipped else { return }
                 results.insert(result, at: 0)
+                if results.count > HistoryStore.maximumInMemoryCount {
+                    results.removeLast(results.count - HistoryStore.maximumInMemoryCount)
+                }
                 await historyStore.append(result)
                 if settings.notificationsEnabled { notifications.send(result) }
                 refreshStatusItem()
@@ -576,6 +662,14 @@ final class AppModel: ObservableObject {
                 bannerMessage = error.localizedDescription
             }
         }
+        return true
+    }
+
+    private func finishProcessing(_ job: PendingDecodeJob) {
+        activeSourcePaths.remove(job.sourcePath)
+        decodeTaskQueue.finish()
+        activeTaskCount = decodeTaskQueue.runningCount
+        drainDecodeTaskQueue()
     }
 
     private func xlogCredentials(for url: URL) -> [XlogCredentials] {
@@ -623,7 +717,10 @@ final class AppModel: ObservableObject {
     }
 
     private func refreshStatusItem() {
-        statusItem.setEnabled(settings.menuBarEnabled)
         statusItem.update(results: results)
+    }
+
+    func flushPendingPersistence() async {
+        await historyStore.flush()
     }
 }

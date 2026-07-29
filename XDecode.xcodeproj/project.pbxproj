@@ -12,6 +12,8 @@
 		A00000000000000000000003 /* FinderSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A00000000000000000000072 /* FinderSync.framework */; };
 		A00000000000000000000004 /* AutomaticDecodeSuppressionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000042 /* AutomaticDecodeSuppressionStore.swift */; };
 		A00000000000000000000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000043 /* Assets.xcassets */; };
+		A00000000000000000000006 /* TaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000044 /* TaskQueue.swift */; };
+		A00000000000000000000007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000045 /* UpdateChecker.swift */; };
 		A00000000000000000000010 /* XDecodeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000030 /* XDecodeApp.swift */; };
 		A00000000000000000000011 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000031 /* AppModel.swift */; };
 		A00000000000000000000012 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000032 /* AppSettings.swift */; };
@@ -74,6 +76,8 @@
 		A00000000000000000000041 /* XDecode.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = XDecode.entitlements; sourceTree = "<group>"; };
 		A00000000000000000000042 /* AutomaticDecodeSuppressionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomaticDecodeSuppressionStore.swift; sourceTree = "<group>"; };
 		A00000000000000000000043 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A00000000000000000000044 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
+		A00000000000000000000045 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A00000000000000000000050 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		A00000000000000000000051 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A00000000000000000000052 /* XDecodeFinder.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = XDecodeFinder.entitlements; sourceTree = "<group>"; };
@@ -127,6 +131,8 @@
 				A0000000000000000000003A /* HistoryStore.swift */,
 				A0000000000000000000003B /* FileStabilityGate.swift */,
 				A0000000000000000000003C /* FolderMonitor.swift */,
+				A00000000000000000000044 /* TaskQueue.swift */,
+				A00000000000000000000045 /* UpdateChecker.swift */,
 				A00000000000000000000042 /* AutomaticDecodeSuppressionStore.swift */,
 				A0000000000000000000003D /* NotificationManager.swift */,
 				A0000000000000000000003E /* StatusItemController.swift */,
@@ -276,6 +282,8 @@
 				A0000000000000000000001A /* HistoryStore.swift in Sources */,
 				A0000000000000000000001B /* FileStabilityGate.swift in Sources */,
 				A0000000000000000000001C /* FolderMonitor.swift in Sources */,
+				A00000000000000000000006 /* TaskQueue.swift in Sources */,
+				A00000000000000000000007 /* UpdateChecker.swift in Sources */,
 				A00000000000000000000004 /* AutomaticDecodeSuppressionStore.swift in Sources */,
 				A0000000000000000000001D /* NotificationManager.swift in Sources */,
 				A0000000000000000000001E /* StatusItemController.swift in Sources */,

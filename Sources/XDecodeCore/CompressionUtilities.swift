@@ -1,38 +1,94 @@
 import CZlib
 import Foundation
 import SwiftZSTD
+import zstdlib
 
 enum CompressionUtilities {
-    static func inflateRaw(_ data: Data) throws -> Data {
-        try inflate(data, windowBits: -MAX_WBITS, allowsSyncFlushTermination: true)
-    }
-
-    static func gunzip(_ data: Data) throws -> Data {
-        try inflate(data, windowBits: MAX_WBITS + 16, allowsSyncFlushTermination: false)
-    }
-
-    static func inflateZlibOrGzip(_ data: Data) throws -> Data {
+    static func inflateRaw(
+        _ data: Data,
+        maximumOutputSize: Int = DecodeLimits.maximumDecompressedOutputSize
+    ) throws -> Data {
         try inflate(
             data,
-            windowBits: MAX_WBITS + 32,
-            flush: Z_SYNC_FLUSH,
-            allowsSyncFlushTermination: false
+            windowBits: -MAX_WBITS,
+            allowsSyncFlushTermination: true,
+            maximumOutputSize: maximumOutputSize
         )
     }
 
-    static func inflateUnfinishedZlibOrGzip(_ data: Data) throws -> Data {
+    static func gunzip(
+        _ data: Data,
+        maximumOutputSize: Int = DecodeLimits.maximumDecompressedOutputSize
+    ) throws -> Data {
+        try inflate(
+            data,
+            windowBits: MAX_WBITS + 16,
+            allowsSyncFlushTermination: false,
+            maximumOutputSize: maximumOutputSize
+        )
+    }
+
+    static func inflateZlibOrGzip(
+        _ data: Data,
+        maximumOutputSize: Int = DecodeLimits.maximumDecompressedOutputSize
+    ) throws -> Data {
         try inflate(
             data,
             windowBits: MAX_WBITS + 32,
             flush: Z_SYNC_FLUSH,
             allowsSyncFlushTermination: false,
-            allowsInputExhaustionTermination: true
+            maximumOutputSize: maximumOutputSize
         )
     }
 
-    static func zstd(_ data: Data) throws -> Data {
+    static func inflateUnfinishedZlibOrGzip(
+        _ data: Data,
+        maximumOutputSize: Int = DecodeLimits.maximumDecompressedOutputSize
+    ) throws -> Data {
+        try inflate(
+            data,
+            windowBits: MAX_WBITS + 32,
+            flush: Z_SYNC_FLUSH,
+            allowsSyncFlushTermination: false,
+            allowsInputExhaustionTermination: true,
+            maximumOutputSize: maximumOutputSize
+        )
+    }
+
+    static func zstd(
+        _ data: Data,
+        maximumOutputSize: Int = DecodeLimits.maximumDecompressedOutputSize
+    ) throws -> Data {
         do {
-            return try ZSTDProcessor().decompressFrame(data)
+            guard !data.isEmpty else {
+                throw DecodeError.decompressionFailed("zstd 输入为空")
+            }
+            let declaredSize = data.withUnsafeBytes { buffer in
+                ZSTD_getFrameContentSize(buffer.baseAddress, data.count)
+            }
+            guard declaredSize != UInt64.max - 1 else {
+                throw DecodeError.decompressionFailed("zstd 帧无效")
+            }
+            guard declaredSize != UInt64.max else {
+                throw DecodeError.decompressionFailed("zstd 帧未声明解压大小")
+            }
+            guard declaredSize <= UInt64(Int.max) else {
+                throw DecodeError.outputLimitExceeded
+            }
+            try DecodeLimits.validateDecompressedOutputSize(
+                currentSize: 0,
+                appending: Int(declaredSize),
+                maximumSize: maximumOutputSize
+            )
+            let output = try ZSTDProcessor().decompressFrame(data)
+            try DecodeLimits.validateDecompressedOutputSize(
+                currentSize: 0,
+                appending: output.count,
+                maximumSize: maximumOutputSize
+            )
+            return output
+        } catch let error as DecodeError {
+            throw error
         } catch {
             throw DecodeError.decompressionFailed("zstd: \(error.localizedDescription)")
         }
@@ -43,7 +99,8 @@ enum CompressionUtilities {
         windowBits: Int32,
         flush: Int32 = Z_NO_FLUSH,
         allowsSyncFlushTermination: Bool,
-        allowsInputExhaustionTermination: Bool = false
+        allowsInputExhaustionTermination: Bool = false,
+        maximumOutputSize: Int
     ) throws -> Data {
         guard !data.isEmpty else { throw DecodeError.decompressionFailed("输入为空") }
 
@@ -79,6 +136,11 @@ enum CompressionUtilities {
 
                 let produced = chunkSize - Int(stream.avail_out)
                 if produced > 0 {
+                    try DecodeLimits.validateDecompressedOutputSize(
+                        currentSize: output.count,
+                        appending: produced,
+                        maximumSize: maximumOutputSize
+                    )
                     output.append(contentsOf: chunk[0..<produced])
                 }
 

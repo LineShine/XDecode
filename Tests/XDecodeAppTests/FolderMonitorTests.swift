@@ -89,6 +89,38 @@ struct FolderMonitorTests {
         #expect(Set(received.map(\.standardizedFileURL)) == Set(expected.map(\.standardizedFileURL)))
     }
 
+    @Test("Changing a file that existed before monitoring does not report it as new")
+    func ignoresChangesToExistingFiles() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let existing = directory.appendingPathComponent("existing.xlog")
+        let newlyCreated = directory.appendingPathComponent("new.mx")
+        try Data("before".utf8).write(to: existing)
+
+        let monitor = FolderMonitor()
+        var continuation: AsyncStream<URL>.Continuation?
+        let events = AsyncStream<URL> { continuation = $0 }
+        monitor.onNewFile = { continuation?.yield($0) }
+        try monitor.start(folderURL: directory)
+        defer {
+            monitor.stop()
+            continuation?.finish()
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let writer = Task.detached(priority: .utility) {
+            try await Task.sleep(for: .milliseconds(250))
+            try Data("after".utf8).write(to: existing)
+            try await Task.sleep(for: .milliseconds(250))
+            try Data("new".utf8).write(to: newlyCreated)
+        }
+
+        let received = await firstEvents(from: events, count: 1)
+        try await writer.value
+        #expect(received.map(\.standardizedFileURL) == [newlyCreated.standardizedFileURL])
+    }
+
     private func firstEvents(from events: AsyncStream<URL>, count: Int) async -> [URL] {
         await withTaskGroup(of: [URL].self) { group in
             group.addTask {

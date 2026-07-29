@@ -26,7 +26,9 @@ final class FinderSyncExtension: FIFinderSync {
         guard !files.isEmpty, let applicationURL = mainApplicationURL else { return }
 
         let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
+        configuration.activates = false
+        configuration.createsNewApplicationInstance = false
+        configuration.allowsRunningApplicationSubstitution = true
         NSWorkspace.shared.open(
             files,
             withApplicationAt: applicationURL,

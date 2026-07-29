@@ -8,7 +8,8 @@ struct HistoryView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("历史记录").font(.title2).fontWeight(.semibold)
-                    Text("保留最近 30 天的解密任务").foregroundStyle(.secondary)
+                    Text("列表显示最近 30 条，磁盘保留最近 200 条且不超过 30 天")
+                        .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button(role: .destructive) { model.clearHistory() } label: { Label("清空记录", systemImage: "trash") }

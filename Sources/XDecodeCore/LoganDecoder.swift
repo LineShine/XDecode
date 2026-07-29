@@ -26,6 +26,8 @@ public struct LoganDecoder: LogDecoder {
         for candidate in candidates {
             do {
                 return try decode(data, credentials: candidate)
+            } catch DecodeError.outputLimitExceeded {
+                throw DecodeError.outputLimitExceeded
             } catch {
                 lastError = error
             }
@@ -62,11 +64,17 @@ public struct LoganDecoder: LogDecoder {
             let encrypted = try data.checkedRange(cursor..<(cursor + encryptedSize))
             cursor += encryptedSize
             let isUnfinishedFinalFrame = cursor == data.count
-            output.append(try decodeFrame(
+            let decoded = try decodeFrame(
                 encrypted,
                 credentials: credentials,
-                allowsUnfinishedStream: isUnfinishedFinalFrame
-            ))
+                allowsUnfinishedStream: isUnfinishedFinalFrame,
+                maximumOutputSize: DecodeLimits.maximumDecompressedOutputSize - output.count
+            )
+            try DecodeLimits.validateDecompressedOutputSize(
+                currentSize: output.count,
+                appending: decoded.count
+            )
+            output.append(decoded)
             decodedFrames += 1
 
             if cursor < data.count {
@@ -85,7 +93,8 @@ public struct LoganDecoder: LogDecoder {
     private func decodeFrame(
         _ encrypted: Data,
         credentials: LoganCredentials,
-        allowsUnfinishedStream: Bool
+        allowsUnfinishedStream: Bool,
+        maximumOutputSize: Int
     ) throws -> Data {
         // Match SwiftyLoganTool first, then retain compatibility with legacy NoPadding frames.
         let options = [CCOptions(kCCOptionPKCS7Padding), CCOptions(0)]
@@ -98,8 +107,11 @@ public struct LoganDecoder: LogDecoder {
                 )
                 return try decodeCompressedFrame(
                     decrypted,
-                    allowsUnfinishedStream: allowsUnfinishedStream && option == 0
+                    allowsUnfinishedStream: allowsUnfinishedStream && option == 0,
+                    maximumOutputSize: maximumOutputSize
                 )
+            } catch DecodeError.outputLimitExceeded {
+                throw DecodeError.outputLimitExceeded
             } catch {
                 continue
             }
@@ -112,14 +124,21 @@ public struct LoganDecoder: LogDecoder {
 
     private func decodeCompressedFrame(
         _ decrypted: Data,
-        allowsUnfinishedStream: Bool
+        allowsUnfinishedStream: Bool,
+        maximumOutputSize: Int
     ) throws -> Data {
         let output: Data
         do {
-            output = try CompressionUtilities.inflateZlibOrGzip(decrypted)
+            output = try CompressionUtilities.inflateZlibOrGzip(
+                decrypted,
+                maximumOutputSize: maximumOutputSize
+            )
         } catch let decompressionError as DecodeError {
             guard allowsUnfinishedStream else { throw decompressionError }
-            return try recoverUnfinishedFrame(decrypted)
+            return try recoverUnfinishedFrame(
+                decrypted,
+                maximumOutputSize: maximumOutputSize
+            )
         }
 
         guard !output.isEmpty else { throw DecodeError.emptyOutput }
@@ -129,9 +148,15 @@ public struct LoganDecoder: LogDecoder {
         return output
     }
 
-    private func recoverUnfinishedFrame(_ decrypted: Data) throws -> Data {
+    private func recoverUnfinishedFrame(
+        _ decrypted: Data,
+        maximumOutputSize: Int
+    ) throws -> Data {
         // CLogan can persist full AES blocks before the active gzip stream has been finalized.
-        let recovered = try CompressionUtilities.inflateUnfinishedZlibOrGzip(decrypted)
+        let recovered = try CompressionUtilities.inflateUnfinishedZlibOrGzip(
+            decrypted,
+            maximumOutputSize: maximumOutputSize
+        )
         guard let lastNewline = recovered.lastIndex(of: 0x0A) else {
             throw DecodeError.decompressionFailed("Logan 未完成末帧没有完整日志行")
         }
