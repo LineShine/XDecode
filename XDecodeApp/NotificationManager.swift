@@ -71,6 +71,7 @@ final class NotificationManager {
     }
 
     func send(_ result: DecodeResult) {
+        guard result.state != .skipped else { return }
         configure()
         guard let center else { return }
         let presentation = Self.presentation(for: result)
@@ -102,6 +103,11 @@ final class NotificationManager {
         case .completedWithWarning:
             return NotificationPresentation(
                 title: "⚠️ \(fileName) 解密成功，源文件删除失败",
+                playsSound: false
+            )
+        case .skipped:
+            return NotificationPresentation(
+                title: "\(fileName) 已跳过",
                 playsSound: false
             )
         case .failed:

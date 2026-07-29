@@ -34,7 +34,7 @@ let package = Package(
             name: "XDecodeApp",
             dependencies: ["XDecodeCore"],
             path: "XDecodeApp",
-            exclude: ["Info.plist", "XDecode.entitlements"],
+            exclude: ["Assets.xcassets", "Info.plist", "XDecode.entitlements"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("Security"),

@@ -48,11 +48,16 @@ final class FolderAccessStore {
     private let storageKey: String
     private let createBookmark: BookmarkCreator
     private let resolveBookmark: BookmarkResolver
+    private let staticallyAuthorizedDirectories: [URL]
     private var bookmarks: [Data]
 
     init(
-        defaults: UserDefaults = UserDefaults(suiteName: "group.com.flat.x.decode") ?? .standard,
+        defaults: UserDefaults = UserDefaults(suiteName: SharedContainer.identifier) ?? .standard,
         storageKey: String = FolderAccessStore.defaultKey,
+        staticallyAuthorizedDirectories: [URL] = FileManager.default.urls(
+            for: .downloadsDirectory,
+            in: .userDomainMask
+        ),
         createBookmark: @escaping BookmarkCreator = FolderAccessStore.makeBookmark,
         resolveBookmark: @escaping BookmarkResolver = FolderAccessStore.resolveBookmark
     ) {
@@ -60,6 +65,7 @@ final class FolderAccessStore {
         self.storageKey = storageKey
         self.createBookmark = createBookmark
         self.resolveBookmark = resolveBookmark
+        self.staticallyAuthorizedDirectories = staticallyAuthorizedDirectories.map(Self.normalized)
         bookmarks = defaults.array(forKey: storageKey)?.compactMap { $0 as? Data } ?? []
     }
 
@@ -95,6 +101,15 @@ final class FolderAccessStore {
         var bestMatch: URL?
         var bestComponentCount = -1
         var bookmarksChanged = false
+
+        for directoryURL in staticallyAuthorizedDirectories
+            where Self.contains(fileURL: fileURL, directoryURL: directoryURL) {
+            let componentCount = directoryURL.pathComponents.count
+            if componentCount > bestComponentCount {
+                bestMatch = directoryURL
+                bestComponentCount = componentCount
+            }
+        }
 
         for index in bookmarks.indices {
             guard var resolved = try? resolveBookmark(bookmarks[index]) else { continue }
@@ -170,7 +185,6 @@ final class AppModel: ObservableObject {
     @Published var selectedSection: SidebarSection = .decode
     @Published private(set) var results: [DecodeResult] = []
     @Published private(set) var activeTaskCount = 0
-    @Published var deletionConfirmationPresented = false
     @Published var bannerMessage: String?
 
     let settings = AppSettings()
@@ -183,12 +197,11 @@ final class AppModel: ObservableObject {
     private let notifications = NotificationManager()
     private let statusItem = StatusItemController()
     private let folderAccess = FolderAccessStore()
-    private var pendingRequests: [(URL, DecodeOrigin)] = []
     private var pendingFolderAccessRequests: [(URL, DecodeOrigin)] = []
-    private var pendingAutomaticEnable = false
     private var folderAuthorizationInProgress = false
     private var activeSourcePaths = Set<String>()
     private var notificationAuthorizationTask: Task<Void, Never>?
+    private var mainWindowPresenter: (() -> Void)?
 
     private lazy var decoderResolver = StandardDecoderResolver.make(
             xlogCredentials: { [weak self] url in
@@ -230,6 +243,7 @@ final class AppModel: ObservableObject {
     }
 
     func launch() {
+        setLaunchAtLoginEnabled(settings.launchAtLoginEnabled)
         if settings.notificationsEnabled {
             requestNotificationAuthorization(showFailure: false)
         }
@@ -242,17 +256,16 @@ final class AppModel: ObservableObject {
                 bannerMessage = "无法访问默认下载目录，请重新添加监控文件夹。"
                 return
             }
-            if settings.destructivePolicyConfirmed {
-                startMonitoring()
-            } else {
-                pendingAutomaticEnable = true
-                deletionConfirmationPresented = true
-            }
+            startMonitoring()
         }
     }
 
     func prepareNotifications() {
         notifications.configure()
+    }
+
+    func setMainWindowPresenter(_ presenter: @escaping () -> Void) {
+        mainWindowPresenter = presenter
     }
 
     func enqueue(_ urls: [URL], origin: DecodeOrigin) {
@@ -262,7 +275,7 @@ final class AppModel: ObservableObject {
             if urls.contains(where: { $0.pathExtension.lowercased() == "zip" }) {
                 bannerMessage = "ZIP 文件名不匹配设置中的任一正则规则：\(settings.zipPatternSummary)"
             } else {
-                bannerMessage = "请选择 xlog、mx、日期格式 Logan 或符合规则的 ZIP 文件"
+                bannerMessage = "请选择 xlog、mx、Logan 或符合规则的 ZIP 文件"
             }
             return
         }
@@ -272,36 +285,7 @@ final class AppModel: ObservableObject {
         let destructiveInputs = supported.filter { settings.logFormat(for: $0) != .zip }
         guard !destructiveInputs.isEmpty else { return }
 
-        guard settings.destructivePolicyConfirmed else {
-            pendingRequests.append(contentsOf: destructiveInputs.map { ($0, origin) })
-            deletionConfirmationPresented = true
-            return
-        }
         destructiveInputs.forEach { prepareToProcess($0, origin: origin) }
-    }
-
-    func confirmPermanentDeletion() {
-        settings.destructivePolicyConfirmed = true
-        deletionConfirmationPresented = false
-        let requests = pendingRequests
-        pendingRequests.removeAll()
-        requests.forEach { prepareToProcess($0.0, origin: $0.1) }
-        if pendingAutomaticEnable {
-            pendingAutomaticEnable = false
-            enableAutomaticMonitoring()
-        }
-    }
-
-    func cancelPermanentDeletion() {
-        let shouldDisableAutomaticMonitoring = pendingAutomaticEnable
-        deletionConfirmationPresented = false
-        pendingRequests.removeAll()
-        pendingAutomaticEnable = false
-        if shouldDisableAutomaticMonitoring {
-            settings.automaticEnabled = false
-            monitor.stop()
-            try? SMAppService.mainApp.unregister()
-        }
     }
 
     func chooseFiles() {
@@ -344,16 +328,10 @@ final class AppModel: ObservableObject {
         guard enabled else {
             settings.automaticEnabled = false
             monitor.stop()
-            try? SMAppService.mainApp.unregister()
             return
         }
         guard !settings.monitoredFolderURLs.isEmpty else {
             chooseMonitoredFolders()
-            return
-        }
-        guard settings.destructivePolicyConfirmed else {
-            pendingAutomaticEnable = true
-            deletionConfirmationPresented = true
             return
         }
         enableAutomaticMonitoring()
@@ -383,6 +361,34 @@ final class AppModel: ObservableObject {
     func setMenuBarEnabled(_ enabled: Bool) {
         settings.menuBarEnabled = enabled
         refreshStatusItem()
+    }
+
+    func setLaunchAtLoginEnabled(_ enabled: Bool) {
+        let service = SMAppService.mainApp
+        do {
+            if enabled {
+                switch service.status {
+                case .enabled, .requiresApproval:
+                    break
+                case .notRegistered, .notFound:
+                    try service.register()
+                @unknown default:
+                    try service.register()
+                }
+            } else {
+                switch service.status {
+                case .notRegistered, .notFound:
+                    break
+                case .enabled, .requiresApproval:
+                    try service.unregister()
+                @unknown default:
+                    try service.unregister()
+                }
+            }
+            settings.launchAtLoginEnabled = enabled
+        } catch {
+            bannerMessage = "开机自启动设置失败：\(error.localizedDescription)"
+        }
     }
 
     func clearHistory() {
@@ -449,6 +455,10 @@ final class AppModel: ObservableObject {
     }
 
     func showMainWindow() {
+        if let mainWindowPresenter {
+            mainWindowPresenter()
+            return
+        }
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         if let window = NSApp.windows.first { window.makeKeyAndOrderFront(nil) }
@@ -560,6 +570,7 @@ final class AppModel: ObservableObject {
                 } else {
                     result = await coordinator.decode(request)
                 }
+                guard result.state != .skipped else { return }
                 results.insert(result, at: 0)
                 await historyStore.append(result)
                 if settings.notificationsEnabled { notifications.send(result) }
@@ -605,7 +616,6 @@ final class AppModel: ObservableObject {
     private func enableAutomaticMonitoring() {
         settings.automaticEnabled = true
         startMonitoring()
-        do { try SMAppService.mainApp.register() } catch { bannerMessage = "登录项注册失败：\(error.localizedDescription)" }
     }
 
     private func startMonitoring() {

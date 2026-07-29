@@ -3,7 +3,7 @@
 XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlog、iOS Logan、MX FlatBuffers 日志，以及包含这些日志的 ZIP 压缩包。应用支持手动选择、拖放、打开方式、Finder 右键和文件夹自动监听，解密结果统一输出为可读的 `.log` 文件。
 
 > [!WARNING]
-> 单个 Xlog、MX 或 Logan 日志只有在完整解密并成功写入 `.log` 后，才会永久删除源文件。首次处理前应用会要求确认此策略。ZIP 批量处理始终保留源 ZIP。请先确认原始日志已有备份。
+> 单个 Xlog、MX 或 Logan 日志只有在完整解密并成功写入 `.log` 后，才会永久删除源文件。ZIP 批量处理始终保留源 ZIP。请先确认原始日志已有备份。
 
 ## 核心能力
 
@@ -12,14 +12,14 @@ XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlo
 | Xlog | `*.xlog` | 支持 `0x03...0x0D` 帧、无压缩、raw deflate、分块 deflate、Zstandard、损坏帧扫描和序号完整性检查 | 加密帧使用 secp256k1 ECDH 派生 TEA Key；私钥为 64 位 Hex |
 | Logan | `yyyy-MM-dd` 或 `*.logan` | 解析 Logan 帧，AES-128-CBC 解密，兼容 PKCS#7/NoPadding，自动解压 zlib/gzip，并恢复未结束末帧中的完整日志行 | Key 和 IV 均至少 16 个 UTF-8 字节，实际使用前 16 字节；也会先尝试全零 Key/IV |
 | MX | `*.mx` | 解析长度前缀和 FlatBuffers 条目，输出时间、级别、Tag 与消息 | 不需要密钥 |
-| ZIP | `^[0-9]+_[0-9]+\.zip$` | 在保留目录结构及非日志文件的同时批量解密 Xlog、Logan 和 MX | 各条目沿用对应格式的匹配方案 |
+| ZIP | `^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$` | 在保留目录结构及非日志文件的同时批量解密 Xlog、Logan 和 MX | 各条目沿用对应格式的匹配方案 |
 
 应用还提供以下能力：
 
 - 多套 Xlog 私钥和 Logan Key/IV 方案，可按文件名匹配并依次尝试。
 - 多文件并行任务、多个递归监控文件夹，以及文件写入稳定后再自动处理。
 - 30 天任务历史、macOS 通知、菜单栏最近任务和 Finder 中定位输出。
-- App Sandbox、Security-Scoped Bookmark 和 macOS Keychain。密钥不会写入 `UserDefaults` 或历史记录。
+- App Sandbox、Team ID App Group、Security-Scoped Bookmark 和 macOS Keychain。密钥不会写入 `UserDefaults` 或历史记录。
 - ZIP 路径穿越、重复路径、CRC、条目数量和解压大小校验。
 
 ## 使用方法
@@ -31,7 +31,7 @@ XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlo
 1. Xlog 加密日志：新增“Xlog secp256k1 私钥”方案，填写方案名称、文件名匹配规则和 64 位 Hex 私钥。
 2. Logan 加密日志：新增“Logan Key / IV”方案，填写文件名规则、AES Key 和 IV。Key/IV 超过 16 字节的部分不会参与解密。
 3. MX：默认匹配 `*.mx`，可直接修改匹配规则。
-4. ZIP：默认只接收形如 `123_456.zip` 的文件，可维护多条正则规则，任一匹配即可处理。
+4. ZIP：默认文件名除 `.zip` 外只允许 ASCII 字母、数字、`_` 和 `-`，分隔符数量和位置不限；可维护多条正则规则，任一匹配即可处理。
 
 非正则规则支持 `*`、`?` 和 `yyyy-MM-dd` 模板，匹配不区分大小写，并要求覆盖完整文件名。以 `^` 开头的规则会按原始正则表达式处理。
 
@@ -54,9 +54,13 @@ python3 script/xlog_gen_key.py
 - 启用 Finder 扩展后，使用右键菜单“使用 XDecode 解密”。Finder 扩展当前覆盖用户主目录。
 - 在“监控文件夹”中添加一个或多个目录并启用“自动解密”。监听是递归的，只处理启用监听后新增且符合规则的普通文件。
 
-首次安装默认开启自动解密，并将 `~/Downloads` 设为监控目录。首次启动仍会要求确认“单个日志成功后永久删除源文件”；取消确认会关闭自动解密。
+“打开方式 -> XDecode”会复用唯一主窗口；如果 XDecode 尚未运行，则在后台处理文件，不额外显示主窗口。需要查看任务时可从 Dock 或菜单栏打开 XDecode。
 
-`~/Downloads` 使用 macOS 下载目录专用沙盒权限。第一次处理其他目录中的文件时，App Sandbox 会要求授权日志所在文件夹。自动监听启用后，应用会注册为登录项；关闭自动解密会停止监听并注销登录项。
+关闭主窗口只会让 XDecode 转到后台，自动监听和菜单栏入口会继续运行。只有按 `Command-Q`，或在菜单栏选择“退出 XDecode”，才会结束 App 进程。
+
+首次安装默认开启自动解密，并将 `~/Downloads` 设为监控目录，启动后直接监听新增日志，不再显示额外的删除确认弹窗。
+
+`~/Downloads` 使用 macOS 下载目录专用沙盒权限。第一次处理其他目录中的文件时，App Sandbox 会要求授权日志所在文件夹。“开机自启动”默认开启，可在设置中独立关闭；它与“自动解密”互不影响。
 
 ### 3. 查看结果
 
@@ -80,7 +84,7 @@ ZIP 会在同级目录生成同名文件夹：
   metadata.json        # 非日志条目原样保留
 ```
 
-ZIP 中全部成功、部分成功或全部日志解密失败时都会生成输出目录；无法读取压缩包、安全校验失败或没有受支持日志时不生成目录。源 ZIP 在所有情况下均保留。
+ZIP 中全部成功、部分成功或全部日志解密失败时都会生成输出目录；无法读取压缩包或安全校验失败时不生成目录并记录失败。没有受支持日志的 ZIP 会静默跳过，不写入历史、最近处理和菜单栏最近任务，也不发送通知。源 ZIP 在所有情况下均保留。
 
 “最近处理”、历史记录、通知和菜单栏最近任务会显示单次处理耗时。成功任务可在 Finder 中定位输出，失败任务可定位保留的源文件；清空历史只删除记录，不删除日志文件。
 
@@ -167,7 +171,7 @@ swift build
 运行完整 macOS App 和 Finder 扩展：
 
 1. 打开 `XDecode.xcodeproj`。
-2. 根据本机开发者账号调整 Signing Team 和 App Group（当前为 `group.com.flat.x.decode`）。主 App 与扩展必须使用同一个 App Group。
+2. 根据本机开发者账号调整 Signing Team；App Group 由 `$(DEVELOPMENT_TEAM).com.flat.x.decode` 生成。主 App 与扩展必须使用同一个 Team ID 前缀 App Group。
 3. 选择共享的 `XDecode` Scheme 并运行。
 4. 在系统设置中启用 XDecode Finder 扩展，验证右键入口。
 

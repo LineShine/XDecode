@@ -8,7 +8,7 @@ struct XDecodeApp: App {
     @StateObject private var model = AppModel.shared
 
     var body: some Scene {
-        WindowGroup {
+        Window("XDecode", id: "main") {
             RootView()
                 .environmentObject(model)
                 .environmentObject(model.settings)
@@ -50,16 +50,97 @@ struct XDecodeApp: App {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var hasFinishedLaunching = false
+    private var shouldSuppressInitialWindow = false
+
     func applicationWillFinishLaunching(_ notification: Notification) {
         AppModel.shared.prepareNotifications()
+        AppModel.shared.setMainWindowPresenter { [weak self] in
+            guard self != nil else { return }
+            MainWindowVisibilityCoordinator.shared.present()
+        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        hasFinishedLaunching = true
         AppModel.shared.launch()
+        MainWindowVisibilityCoordinator.shared.completeLaunch(
+            shouldPresent: !shouldSuppressInitialWindow
+        )
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        AppModel.shared.showMainWindow()
+        if !hasFinishedLaunching {
+            shouldSuppressInitialWindow = true
+            MainWindowVisibilityCoordinator.shared.suppress()
+        }
         AppModel.shared.enqueue(urls, origin: .openWith)
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        guard hasFinishedLaunching else { return false }
+        MainWindowVisibilityCoordinator.shared.present()
+        return false
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+}
+
+@MainActor
+final class MainWindowVisibilityCoordinator {
+    static let shared = MainWindowVisibilityCoordinator()
+
+    private enum LaunchState {
+        case pending
+        case suppressed
+        case presented
+    }
+
+    private var state: LaunchState = .pending
+    private var window: NSWindow?
+
+    private init() {}
+
+    func attach(_ window: NSWindow) {
+        self.window = window
+        window.isReleasedWhenClosed = false
+        applyState()
+    }
+
+    func suppress() {
+        state = .suppressed
+        applyState()
+    }
+
+    func completeLaunch(shouldPresent: Bool) {
+        state = shouldPresent ? .presented : .suppressed
+        applyState()
+    }
+
+    func present() {
+        state = .presented
+        guard let window else { return }
+        NSApp.setActivationPolicy(.regular)
+        window.alphaValue = 1
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func applyState() {
+        guard let window else { return }
+        switch state {
+        case .pending, .suppressed:
+            window.alphaValue = 0
+            if state == .suppressed {
+                window.orderOut(nil)
+            }
+        case .presented:
+            window.alphaValue = 1
+        }
     }
 }

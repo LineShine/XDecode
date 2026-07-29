@@ -1,11 +1,25 @@
 import Foundation
 import XDecodeCore
 
+enum SharedContainer {
+    static let identifier: String = {
+        let configured = Bundle.main.object(
+            forInfoDictionaryKey: "XDecodeAppGroupIdentifier"
+        ) as? String
+        guard let configured,
+              !configured.isEmpty,
+              !configured.contains("$(")
+        else { return "32MTP8HP59.com.flat.x.decode" }
+        return configured
+    }()
+}
+
 enum FilenamePatternDefaults {
     static let xlog = "*.xlog"
     static let logan = "yyyy-MM-dd"
     static let mx = "*.mx"
-    static let zip = #"^[0-9]+_[0-9]+\.zip$"#
+    static let zip = #"^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
+    static let previousZip = #"^[0-9]+_[0-9]+\.zip$"#
 }
 
 enum FilenamePattern {
@@ -104,9 +118,10 @@ final class AppSettings: ObservableObject {
 
     private enum Key {
         static let automaticEnabled = "automaticEnabled"
+        static let defaultDownloadsMonitoringEnabled = "defaultDownloadsMonitoringEnabled"
+        static let launchAtLoginEnabled = "launchAtLoginEnabled"
         static let notificationsEnabled = "notificationsEnabled"
         static let menuBarEnabled = "menuBarEnabled"
-        static let destructivePolicyConfirmed = "destructivePolicyConfirmed"
         static let monitoredFolderBookmark = "monitoredFolderBookmark"
         static let monitoredFolderBookmarks = "monitoredFolderBookmarks"
         static let xlogProfiles = "xlogProfiles"
@@ -119,19 +134,23 @@ final class AppSettings: ObservableObject {
     private let defaults: UserDefaults
     private let createBookmark: BookmarkCreator
     private let resolveBookmark: BookmarkResolver
+    private let defaultMonitoredFolderURL: URL?
 
     @Published var automaticEnabled: Bool { didSet { defaults.set(automaticEnabled, forKey: Key.automaticEnabled) } }
+    @Published var launchAtLoginEnabled: Bool { didSet { defaults.set(launchAtLoginEnabled, forKey: Key.launchAtLoginEnabled) } }
     @Published var notificationsEnabled: Bool { didSet { defaults.set(notificationsEnabled, forKey: Key.notificationsEnabled) } }
     @Published var menuBarEnabled: Bool { didSet { defaults.set(menuBarEnabled, forKey: Key.menuBarEnabled) } }
-    @Published var destructivePolicyConfirmed: Bool { didSet { defaults.set(destructivePolicyConfirmed, forKey: Key.destructivePolicyConfirmed) } }
     @Published var mxFilePattern: String { didSet { defaults.set(mxFilePattern, forKey: Key.mxFilePattern) } }
+    @Published private(set) var defaultDownloadsMonitoringEnabled: Bool {
+        didSet { defaults.set(defaultDownloadsMonitoringEnabled, forKey: Key.defaultDownloadsMonitoringEnabled) }
+    }
     @Published private(set) var monitoredFolderBookmarks: [Data]
     @Published private(set) var xlogProfiles: [XlogProfile]
     @Published private(set) var loganProfiles: [LoganProfile]
     @Published private(set) var zipPatternRules: [ZipPatternRule]
 
     init(
-        defaults: UserDefaults = UserDefaults(suiteName: "group.com.flat.x.decode") ?? .standard,
+        defaults: UserDefaults = UserDefaults(suiteName: SharedContainer.identifier) ?? .standard,
         createBookmark: @escaping BookmarkCreator = AppSettings.makeBookmark,
         resolveBookmark: @escaping BookmarkResolver = AppSettings.resolveBookmark,
         defaultMonitoredFolderURL: URL? = FileManager.default.urls(
@@ -142,42 +161,75 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         self.createBookmark = createBookmark
         self.resolveBookmark = resolveBookmark
+        self.defaultMonitoredFolderURL = defaultMonitoredFolderURL?
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
         let hasStoredAutomaticSetting = defaults.object(forKey: Key.automaticEnabled) != nil
+        let hasStoredDefaultDownloadsSetting = defaults.object(
+            forKey: Key.defaultDownloadsMonitoringEnabled
+        ) != nil
         automaticEnabled = hasStoredAutomaticSetting
             ? defaults.bool(forKey: Key.automaticEnabled)
             : true
+        defaultDownloadsMonitoringEnabled = hasStoredDefaultDownloadsSetting
+            ? defaults.bool(forKey: Key.defaultDownloadsMonitoringEnabled)
+            : false
+        launchAtLoginEnabled = defaults.object(forKey: Key.launchAtLoginEnabled) == nil
+            ? true
+            : defaults.bool(forKey: Key.launchAtLoginEnabled)
         notificationsEnabled = defaults.object(forKey: Key.notificationsEnabled) == nil
             ? true
             : defaults.bool(forKey: Key.notificationsEnabled)
         menuBarEnabled = defaults.object(forKey: Key.menuBarEnabled) == nil
             ? true
             : defaults.bool(forKey: Key.menuBarEnabled)
-        destructivePolicyConfirmed = defaults.bool(forKey: Key.destructivePolicyConfirmed)
         mxFilePattern = defaults.string(forKey: Key.mxFilePattern) ?? FilenamePatternDefaults.mx
 
         let storedZipPattern = defaults.string(forKey: Key.zipFilePattern)
         if let data = defaults.data(forKey: Key.zipPatternRules),
            let rules = try? JSONDecoder().decode([ZipPatternRule].self, from: data),
            !rules.isEmpty {
-            zipPatternRules = rules
+            zipPatternRules = rules.map { rule in
+                guard rule.pattern == FilenamePatternDefaults.previousZip else { return rule }
+                var migratedRule = rule
+                migratedRule.pattern = FilenamePatternDefaults.zip
+                return migratedRule
+            }
         } else if let storedZipPattern, storedZipPattern != "*_*.zip" {
-            zipPatternRules = [ZipPatternRule(pattern: storedZipPattern)]
+            zipPatternRules = [ZipPatternRule(
+                pattern: storedZipPattern == FilenamePatternDefaults.previousZip
+                    ? FilenamePatternDefaults.zip
+                    : storedZipPattern
+            )]
         } else {
             zipPatternRules = [ZipPatternRule()]
         }
-        if let bookmarks = defaults.array(forKey: Key.monitoredFolderBookmarks) as? [Data],
-           !bookmarks.isEmpty {
-            monitoredFolderBookmarks = bookmarks
+        let storedBookmarks: [Data]
+        if let bookmarks = defaults.array(forKey: Key.monitoredFolderBookmarks) as? [Data] {
+            storedBookmarks = bookmarks
         } else if let legacyBookmark = defaults.data(forKey: Key.monitoredFolderBookmark) {
-            monitoredFolderBookmarks = [legacyBookmark]
-        } else if !hasStoredAutomaticSetting,
-                  defaults.object(forKey: Key.monitoredFolderBookmarks) == nil,
-                  defaults.object(forKey: Key.monitoredFolderBookmark) == nil,
-                  let defaultMonitoredFolderURL,
-                  let bookmark = try? createBookmark(defaultMonitoredFolderURL) {
-            monitoredFolderBookmarks = [bookmark]
+            storedBookmarks = [legacyBookmark]
         } else {
-            monitoredFolderBookmarks = []
+            storedBookmarks = []
+        }
+
+        let validStoredBookmarks = storedBookmarks.filter { bookmark in
+            (try? resolveBookmark(bookmark)) != nil
+        }
+        monitoredFolderBookmarks = validStoredBookmarks
+        let shouldEnableDefaultDownloads = !hasStoredDefaultDownloadsSetting
+            && validStoredBookmarks.isEmpty
+            && defaultMonitoredFolderURL != nil
+        if shouldEnableDefaultDownloads {
+            defaultDownloadsMonitoringEnabled = true
+            automaticEnabled = true
+            defaults.set(true, forKey: Key.automaticEnabled)
+        }
+        if !hasStoredDefaultDownloadsSetting {
+            defaults.set(
+                shouldEnableDefaultDownloads,
+                forKey: Key.defaultDownloadsMonitoringEnabled
+            )
         }
         xlogProfiles = defaults.data(forKey: Key.xlogProfiles)
             .flatMap { try? JSONDecoder().decode([XlogProfile].self, from: $0) } ?? []
@@ -200,7 +252,16 @@ final class AppSettings: ObservableObject {
     }
 
     var monitoredFolderURLs: [URL] {
-        monitoredFolderBookmarks.compactMap { try? resolveBookmark($0) }
+        var urls = monitoredFolderBookmarks.compactMap { try? resolveBookmark($0) }
+        if defaultDownloadsMonitoringEnabled, let defaultMonitoredFolderURL {
+            urls.insert(defaultMonitoredFolderURL, at: 0)
+        }
+
+        var seen = Set<String>()
+        return urls.filter { url in
+            let path = url.standardizedFileURL.resolvingSymlinksInPath().path
+            return seen.insert(path).inserted
+        }
     }
 
     var monitoredFolderBookmark: Data? {
@@ -239,12 +300,18 @@ final class AppSettings: ObservableObject {
     }
 
     func addMonitoredFolder(_ url: URL) throws {
-        let bookmark = try createBookmark(url)
         let normalizedURL = url.standardizedFileURL.resolvingSymlinksInPath()
         monitoredFolderBookmarks.removeAll { storedBookmark in
             guard let storedURL = try? resolveBookmark(storedBookmark) else { return false }
             return storedURL.standardizedFileURL.resolvingSymlinksInPath() == normalizedURL
         }
+        if isDefaultMonitoredFolder(url) {
+            defaultDownloadsMonitoringEnabled = true
+            persistMonitoredFolderBookmarks()
+            return
+        }
+
+        let bookmark = try createBookmark(url)
         monitoredFolderBookmarks.append(bookmark)
         persistMonitoredFolderBookmarks()
     }
@@ -255,10 +322,14 @@ final class AppSettings: ObservableObject {
             guard let storedURL = try? resolveBookmark(storedBookmark) else { return true }
             return storedURL.standardizedFileURL.resolvingSymlinksInPath() == normalizedURL
         }
+        if isDefaultMonitoredFolder(url) {
+            defaultDownloadsMonitoringEnabled = false
+        }
         persistMonitoredFolderBookmarks()
     }
 
     func setMonitoredFolder(_ url: URL) throws {
+        defaultDownloadsMonitoringEnabled = false
         monitoredFolderBookmarks.removeAll()
         try addMonitoredFolder(url)
     }
@@ -330,6 +401,12 @@ final class AppSettings: ObservableObject {
     private func persistMonitoredFolderBookmarks() {
         defaults.set(monitoredFolderBookmarks, forKey: Key.monitoredFolderBookmarks)
         defaults.removeObject(forKey: Key.monitoredFolderBookmark)
+    }
+
+    private func isDefaultMonitoredFolder(_ url: URL) -> Bool {
+        guard let defaultMonitoredFolderURL else { return false }
+        return url.standardizedFileURL.resolvingSymlinksInPath()
+            == defaultMonitoredFolderURL.standardizedFileURL.resolvingSymlinksInPath()
     }
 
     private nonisolated static func makeBookmark(_ url: URL) throws -> Data {

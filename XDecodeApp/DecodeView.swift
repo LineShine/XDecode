@@ -13,7 +13,7 @@ struct DecodeView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("解密日志").font(.title2).fontWeight(.semibold)
-                        Text("支持 Xlog、MX、日期格式 Logan 和符合规则的 ZIP").foregroundStyle(.secondary)
+                        Text("支持 Xlog、MX、Logan 和符合规则的 ZIP").foregroundStyle(.secondary)
                     }
                     Spacer()
                     Button { model.chooseFiles() } label: { Label("选择文件", systemImage: "doc.badge.plus") }
@@ -23,7 +23,7 @@ struct DecodeView: View {
                 dropZone
 
                 HStack {
-                    Text("最近处理").font(.headline)
+                    Text("最近5个处理").font(.headline)
                     Spacer()
                     Button("查看全部") { model.selectedSection = .history }
                         .buttonStyle(.link)
@@ -42,7 +42,7 @@ struct DecodeView: View {
                 }
 
                 HStack {
-                    Text("单个日志成功后删除源文件；ZIP 批量始终保留源 ZIP")
+                    Text("单个日志解密成功后删除源文件；ZIP 批量始终保留源 ZIP")
                     Spacer()
                     if model.activeTaskCount > 0 { ProgressView().controlSize(.small) }
                     Text(model.activeTaskCount > 0 ? "正在处理 \(model.activeTaskCount) 个任务" : "等待任务")
@@ -147,6 +147,7 @@ struct ResultRow: View {
         case .completed: "checkmark.circle.fill"
         case .partiallyCompleted: "exclamationmark.circle.fill"
         case .completedWithWarning: "exclamationmark.triangle.fill"
+        case .skipped: "minus.circle.fill"
         case .failed: "xmark.circle.fill"
         }
     }
@@ -156,6 +157,7 @@ struct ResultRow: View {
         case .completed: .green
         case .partiallyCompleted: .orange
         case .completedWithWarning: .orange
+        case .skipped: .secondary
         case .failed: .red
         }
     }

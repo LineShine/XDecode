@@ -11,7 +11,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func setEnabled(_ enabled: Bool) {
         if enabled, statusItem == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-            item.button?.image = NSImage(systemSymbolName: "lock.open", accessibilityDescription: "XDecode")
+            let image = NSImage(named: "MenuBarIcon")
+                ?? NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "XDecode")
+            image?.isTemplate = true
+            item.button?.image = image
+            item.button?.setAccessibilityLabel("XDecode")
             let menu = NSMenu()
             menu.delegate = self
             item.menu = menu
@@ -23,7 +27,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     func update(results: [DecodeResult]) {
-        recentResults = Array(results.prefix(3))
+        recentResults = Array(results.lazy.filter { $0.state != .skipped }.prefix(3))
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {

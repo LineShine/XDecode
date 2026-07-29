@@ -61,7 +61,13 @@ public actor ZipDecodeCoordinator {
             let items = try await inspectEntries(in: archive, sourceURL: sourceURL)
             let logCount = items.filter { $0.format != nil }.count
             guard logCount > 0 else {
-                throw DecodeError.decodingFailed("ZIP 中没有符合当前规则的 Xlog、MX 或 Logan 日志")
+                return DecodeResult(
+                    request: request,
+                    state: .skipped,
+                    outputURL: nil,
+                    message: "ZIP 中没有符合当前规则的 Xlog、MX 或 Logan 日志；未生成输出目录，源 ZIP 已保留",
+                    sourceDeleted: false
+                )
             }
             guard logCount <= maximumLogCount else {
                 throw DecodeError.decodingFailed("ZIP 中日志数量超过 \(maximumLogCount) 个")

@@ -40,6 +40,10 @@ struct SettingsView: View {
             }
 
             Section("常规") {
+                Toggle("开机自启动", isOn: Binding(
+                    get: { settings.launchAtLoginEnabled },
+                    set: { model.setLaunchAtLoginEnabled($0) }
+                ))
                 Toggle("通知", isOn: Binding(
                     get: { settings.notificationsEnabled },
                     set: { model.setNotificationsEnabled($0) }
@@ -48,9 +52,6 @@ struct SettingsView: View {
                     get: { settings.menuBarEnabled },
                     set: { model.setMenuBarEnabled($0) }
                 ))
-                LabeledContent("输出规则", value: "原文件名.log；重名时追加序号")
-                LabeledContent("单个日志", value: "成功后永久删除源文件")
-                LabeledContent("ZIP 批量", value: "始终保留源 ZIP")
             }
 
             Section {

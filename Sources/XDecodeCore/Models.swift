@@ -53,6 +53,7 @@ public enum DecodeState: String, Codable, Sendable {
     case completed
     case partiallyCompleted
     case completedWithWarning
+    case skipped
     case failed
 }
 

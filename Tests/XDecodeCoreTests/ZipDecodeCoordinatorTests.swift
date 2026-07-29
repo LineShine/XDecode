@@ -110,7 +110,7 @@ struct ZipDecodeCoordinatorTests {
         #expect(result.message.contains("批量解密失败"))
     }
 
-    @Test("Archive without supported logs is rejected before extraction")
+    @Test("Archive without supported logs is skipped before extraction")
     func rejectsArchiveWithoutLogs() async throws {
         let directory = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -124,7 +124,8 @@ struct ZipDecodeCoordinatorTests {
             try DecodeRequest(sourceURL: source, origin: .filePicker)
         )
 
-        #expect(result.state == .failed)
+        #expect(result.state == .skipped)
+        #expect(result.outputURL == nil)
         #expect(FileManager.default.fileExists(atPath: source.path))
         #expect(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("12_34").path))
         #expect(result.message.contains("没有符合当前规则"))

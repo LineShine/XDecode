@@ -6,7 +6,9 @@ actor HistoryStore {
     private let retention: TimeInterval = 30 * 24 * 60 * 60
 
     init(fileManager: FileManager = .default) {
-        let base = fileManager.containerURL(forSecurityApplicationGroupIdentifier: "group.com.flat.x.decode")
+        let base = fileManager.containerURL(
+            forSecurityApplicationGroupIdentifier: SharedContainer.identifier
+        )
             ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
                 .appendingPathComponent("XDecode", isDirectory: true)
         try? fileManager.createDirectory(at: base, withIntermediateDirectories: true)
@@ -17,10 +19,13 @@ actor HistoryStore {
         guard let data = try? Data(contentsOf: fileURL),
               let values = try? JSONDecoder().decode([DecodeResult].self, from: data) else { return [] }
         let cutoff = Date().addingTimeInterval(-retention)
-        return values.filter { $0.finishedAt >= cutoff }.sorted { $0.finishedAt > $1.finishedAt }
+        return values
+            .filter { $0.state != .skipped && $0.finishedAt >= cutoff }
+            .sorted { $0.finishedAt > $1.finishedAt }
     }
 
     func append(_ result: DecodeResult) {
+        guard result.state != .skipped else { return }
         var values = load()
         values.insert(result, at: 0)
         if let data = try? JSONEncoder().encode(values) {

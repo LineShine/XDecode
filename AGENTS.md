@@ -79,6 +79,7 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 - 成功条目写 `.log`；失败条目以原路径、原文件名和原始内容保留。
 - 非日志文件及目录结构原样保留；`__MACOSX` 和 `._*` 元数据除外。
 - 部分成功和全部日志解密失败都发布输出目录；压缩包本身检查失败时不发布目录。
+- ZIP 中没有符合当前规则的日志时返回 `skipped`，主 App 必须静默忽略，不写历史、最近处理或菜单栏最近任务，也不发送通知。
 - 发布目录同样必须排他命名，不能覆盖已有目录。
 - 在放宽任何限制前先做威胁分析。当前限制为 1,000 个条目、100 个日志、单条目 512 MB、总计 1 GB。
 - 必须保留 Zip Slip、绝对路径、NUL、Windows 盘符、大小写重复路径、解压大小、CRC 和实际大小校验。
@@ -112,7 +113,7 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 
 ## 文件名识别
 
-默认规则：Xlog `*.xlog`，MX `*.mx`，Logan `yyyy-MM-dd`，ZIP `^[0-9]+_[0-9]+\.zip$`。
+默认规则：Xlog `*.xlog`，MX `*.mx`，Logan `yyyy-MM-dd`，ZIP `^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$`。
 
 - 规则不区分大小写。
 - 非 `^` 开头的规则会转成全文件名匹配，支持 `*`、`?`、`yyyy`、`MM`、`dd`。
@@ -135,9 +136,11 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 - UI 状态、`AppModel`、`AppSettings`、FSEvents 控制器和通知中心留在 `@MainActor`。
 - 不要用 `nonisolated(unsafe)` 绕过新问题；`FolderMonitor.stream` 是 Core Foundation 回调生命周期的局部例外。
 - `activeSourcePaths` 防止同一路径并发重复处理，任何新增入口都必须经过 `AppModel.enqueue`。
+- 主界面使用单实例 SwiftUI `Window`，以保留 `NavigationSplitView` 的原生工具栏定位。窗口挂载时由 `MainWindowVisibilityCoordinator` 在首帧前控制透明度；通过“打开方式”冷启动时保持不可见，普通启动、Dock 重新打开和菜单栏入口才显示主窗口。
+- 关闭最后一个窗口不得终止 App；自动监听和菜单栏入口必须继续在后台运行。只有系统 `Command-Q` 和菜单栏“退出 XDecode”可以终止进程。
 - Security-scoped access 必须成对结束。异步任务的所有退出路径都要释放文件 URL 和授权目录访问。
-- 首次安装默认启用自动解密并写入 `~/Downloads` 监控书签；用户显式关闭或移除目录后不得在后续启动中重新补回。
-- 默认自动解密仍受永久删除确认约束。首次启动取消确认时必须同步关闭自动解密，不能留下“界面开启、监听未运行”的状态。
+- 首次安装默认启用自动解密，并通过 Downloads entitlement 将 `~/Downloads` 作为静态授权监控目录；不要为该目录创建 security-scoped bookmark。用户显式关闭或移除目录后不得在后续启动中重新补回。
+- 首次安装的自动监听直接启动，不显示永久删除确认弹窗；设置页和 README 必须继续明确说明单日志成功后永久删除源文件。
 - 自动监听启动时先快照已有文件，只处理之后新增的文件；不要改成启动后扫描并处理整个目录。
 
 ## 数据与安全
@@ -145,9 +148,9 @@ Xcode 构建可能需要本机 Signing Team 和 App Group。仅改 `Sources/XDec
 - 不得在源码、测试 fixture、README、日志、`UserDefaults`、通知或 `DecodeResult` 中加入真实私钥、AES Key/IV 或用户日志正文。
 - `script/xlog_crypt_log.py` 含协议参考用常量，不能把它当生产密钥来源，也不要把用户提供的密钥写回脚本。
 - Xlog/Logan 方案元数据放共享 `UserDefaults`，密钥正文只放对应 Keychain service。
-- 主 App 与 Finder 扩展必须保持相同 App Group；改 Bundle ID/App Group 时同步工程、entitlements、UserDefaults suite 和容器访问。
-- `~/Downloads` 使用 `com.apple.security.files.downloads.read-write`；不要把静态文件权限扩大到下载目录之外。
-- 文件授权通过 app-scoped security bookmark 持久化。不要扩大沙盒权限来规避书签流程。
+- 主 App 与 Finder 扩展必须保持相同 App Group；当前通过 `APP_GROUP_IDENTIFIER = $(DEVELOPMENT_TEAM).com.flat.x.decode` 使用 Team ID 前缀，避免 macOS 15 对未授权旧式共享组反复询问。两个 target 的 `SystemCapabilities` 都必须启用 App Groups；改 Bundle ID/App Group 时同步工程、entitlements、Info.plist、运行时 suite 和容器访问。
+- `~/Downloads` 使用 `com.apple.security.files.downloads.read-write` 和独立持久化开关，不进入 security-scoped bookmark 列表；不要把静态文件权限扩大到下载目录之外。
+- Downloads 以外的文件授权通过 app-scoped security bookmark 持久化。不要扩大沙盒权限来规避书签流程。
 - 二进制解析必须通过有边界检查的读取方法；对来自文件的长度做溢出和上限验证后才能分配内存。
 
 ## 测试策略

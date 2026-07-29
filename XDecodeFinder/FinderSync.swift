@@ -2,6 +2,17 @@ import AppKit
 import FinderSync
 
 final class FinderSyncExtension: FIFinderSync {
+    private static let appGroupIdentifier: String = {
+        let configured = Bundle.main.object(
+            forInfoDictionaryKey: "XDecodeAppGroupIdentifier"
+        ) as? String
+        guard let configured,
+              !configured.isEmpty,
+              !configured.contains("$(")
+        else { return "32MTP8HP59.com.flat.x.decode" }
+        return configured
+    }()
+
     private struct LoganProfile: Decodable {
         let filePattern: String
     }
@@ -13,7 +24,8 @@ final class FinderSyncExtension: FIFinderSync {
     private enum DefaultPattern {
         static let logan = "yyyy-MM-dd"
         static let mx = "*.mx"
-        static let zip = #"^[0-9]+_[0-9]+\.zip$"#
+        static let zip = #"^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
+        static let previousZip = #"^[0-9]+_[0-9]+\.zip$"#
     }
 
     override init() {
@@ -50,7 +62,7 @@ final class FinderSyncExtension: FIFinderSync {
 
     private static func isSupported(_ url: URL) -> Bool {
         let pathExtension = url.pathExtension.lowercased()
-        let defaults = UserDefaults(suiteName: "group.com.flat.x.decode")
+        let defaults = UserDefaults(suiteName: appGroupIdentifier)
         if pathExtension == "xlog" { return true }
         if matches(defaults?.string(forKey: "mxFilePattern") ?? DefaultPattern.mx, url: url) {
             return true
@@ -75,7 +87,9 @@ final class FinderSyncExtension: FIFinderSync {
         } else {
             patterns = [DefaultPattern.zip]
         }
-        return patterns.contains { matches($0, url: url) }
+        return patterns.contains { pattern in
+            matches(pattern == DefaultPattern.previousZip ? DefaultPattern.zip : pattern, url: url)
+        }
     }
 
     private static func matches(_ pattern: String, url: URL) -> Bool {

@@ -45,9 +45,30 @@ struct FolderAccessStoreTests {
         #expect(store.authorizedDirectory(containing: file) == nested)
     }
 
-    private func makeStore(defaults: UserDefaults) -> FolderAccessStore {
+    @Test("Statically entitled folders authorize descendants without bookmarks")
+    func authorizesStaticFolder() throws {
+        let suiteName = "XDecodeTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let downloads = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let file = downloads.appendingPathComponent("nested/sample.xlog")
+        let store = makeStore(defaults: defaults, staticallyAuthorizedDirectories: [downloads])
+
+        #expect(
+            store.authorizedDirectory(containing: file)?.standardizedFileURL.path
+                == downloads.standardizedFileURL.path
+        )
+    }
+
+    private func makeStore(
+        defaults: UserDefaults,
+        staticallyAuthorizedDirectories: [URL] = []
+    ) -> FolderAccessStore {
         FolderAccessStore(
             defaults: defaults,
+            staticallyAuthorizedDirectories: staticallyAuthorizedDirectories,
             createBookmark: { Data($0.standardizedFileURL.path.utf8) },
             resolveBookmark: { data in
                 guard let path = String(data: data, encoding: .utf8) else {
