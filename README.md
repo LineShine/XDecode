@@ -65,6 +65,20 @@ XDecode 以菜单栏 App 运行，不在程序坞或 `Command-Tab` 中显示。�
 
 `~/Downloads` 使用 macOS 下载目录专用沙盒权限。第一次处理其他目录中的文件时，App Sandbox 会要求授权日志所在文件夹。“开机自启动”默认开启，可在设置中独立关闭；它与“自动解密”互不影响。“常规”设置会显示当前版本并提供“检查更新”，该操作只请求 `LineShine/XDecode` 的 GitHub Releases 元数据，不会自动下载或安装。
 
+### 完整卸载与首次安装测试
+
+仓库提供卸载脚本，用于清理 App、开机自启动、Finder 扩展、LaunchServices、设置、历史和新旧版本密钥：
+
+```bash
+# 先预览，不执行删除
+./script/uninstall_xdecode.sh --dry-run
+
+# 直接执行卸载
+./script/uninstall_xdecode.sh
+```
+
+脚本默认检查 `/Applications`、`~/Applications`、Xcode DerivedData 和 `/private/tmp` 中经过 Bundle ID 校验的 XDecode App。若从其他位置直接运行 App，可追加 `--app /path/to/XDecode.app`。脚本不会删除 `~/Downloads` 中的日志、解密结果、DMG 或其他安装包，也不会使用会重置其他 App 登录项的 `sfltool resetbtm`。
+
 ### 3. 查看结果
 
 单文件输出位于源文件同级目录：
