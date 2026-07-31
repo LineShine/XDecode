@@ -1,0 +1,4 @@
+LIBRARY "XDecode.ExplorerCommand"
+EXPORTS
+    DllCanUnloadNow PRIVATE
+    DllGetClassObject PRIVATE

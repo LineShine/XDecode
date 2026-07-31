@@ -1,0 +1,116 @@
+<Page
+    x:Class="XDecode.WindowsApp.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Padding="32" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="设置" Style="{StaticResource TitleTextBlockStyle}" />
+        <TabView Grid.Row="1">
+            <TabViewItem Header="常规">
+                <StackPanel Padding="4,20" Spacing="16" MaxWidth="720"
+                            HorizontalAlignment="Left">
+                    <ToggleSwitch x:Name="NotificationToggle" Header="通知"
+                                  Toggled="NotificationToggle_Toggled" />
+                    <ToggleSwitch x:Name="StartupToggle" Header="开机自启动"
+                                  Toggled="StartupToggle_Toggled" />
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="版本 1.0.0" VerticalAlignment="Center" />
+                        <Button Content="检查更新" Click="CheckUpdate_Click" />
+                    </StackPanel>
+                    <InfoBar x:Name="UpdateInfo" IsOpen="False" />
+                </StackPanel>
+            </TabViewItem>
+            <TabViewItem Header="Xlog">
+                <Grid Padding="4,20" ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280" />
+                        <ColumnDefinition Width="420" />
+                    </Grid.ColumnDefinitions>
+                    <Grid RowSpacing="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ListView x:Name="XlogProfileList"
+                                  SelectionChanged="XlogProfileList_SelectionChanged">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="新增" Click="AddXlog_Click" />
+                            <Button Content="删除" Click="DeleteXlog_Click" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Spacing="12">
+                        <TextBox x:Name="XlogName" Header="名称" />
+                        <TextBox x:Name="XlogPattern" Header="文件名规则" />
+                        <PasswordBox x:Name="XlogKey" Header="secp256k1 私钥（64 位 Hex）"
+                                     PasswordRevealMode="Peek" />
+                        <Button Content="保存" HorizontalAlignment="Left" Click="SaveXlog_Click" />
+                        <InfoBar x:Name="XlogInfo" IsOpen="False" />
+                    </StackPanel>
+                </Grid>
+            </TabViewItem>
+            <TabViewItem Header="Logan">
+                <Grid Padding="4,20" ColumnSpacing="20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="280" />
+                        <ColumnDefinition Width="420" />
+                    </Grid.ColumnDefinitions>
+                    <Grid RowSpacing="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <ListView x:Name="LoganProfileList"
+                                  SelectionChanged="LoganProfileList_SelectionChanged">
+                            <ListView.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" />
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+                            <Button Content="新增" Click="AddLogan_Click" />
+                            <Button Content="删除" Click="DeleteLogan_Click" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Spacing="12">
+                        <TextBox x:Name="LoganName" Header="名称" />
+                        <TextBox x:Name="LoganPattern" Header="文件名规则" />
+                        <PasswordBox x:Name="LoganKey" Header="AES Key" PasswordRevealMode="Peek" />
+                        <PasswordBox x:Name="LoganIV" Header="AES IV" PasswordRevealMode="Peek" />
+                        <Button Content="保存" HorizontalAlignment="Left" Click="SaveLogan_Click" />
+                        <InfoBar x:Name="LoganInfo" IsOpen="False" />
+                    </StackPanel>
+                </Grid>
+            </TabViewItem>
+            <TabViewItem Header="文件规则">
+                <StackPanel Padding="4,20" Spacing="14" MaxWidth="720"
+                            HorizontalAlignment="Left">
+                    <TextBox x:Name="MxPattern" Header="MX 文件名规则" />
+                    <TextBlock Text="ZIP 文件名规则" Style="{StaticResource SubtitleTextBlockStyle}" />
+                    <ListView x:Name="ZipRuleList" SelectionMode="Single" Height="180">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Pattern}" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <TextBox x:Name="ZipPattern" Header="规则" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="新增" Click="AddZipRule_Click" />
+                        <Button Content="保存" Click="SaveRules_Click" />
+                        <Button Content="删除" Click="DeleteZipRule_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </TabViewItem>
+        </TabView>
+    </Grid>
+</Page>

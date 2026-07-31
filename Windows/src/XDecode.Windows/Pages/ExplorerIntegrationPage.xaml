@@ -1,0 +1,19 @@
+<Page
+    x:Class="XDecode.WindowsApp.Pages.ExplorerIntegrationPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Padding="32" Spacing="18">
+        <TextBlock Text="资源管理器右键" Style="{StaticResource TitleTextBlockStyle}" />
+        <InfoBar IsOpen="True" Severity="Success"
+                 Title="已注册"
+                 Message="使用 XDecode 解密" />
+        <TextBlock Text="文件关联" Style="{StaticResource SubtitleTextBlockStyle}" />
+        <ItemsRepeater ItemsSource="{x:Bind Associations}">
+            <ItemsRepeater.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding}" Margin="0,6" />
+                </DataTemplate>
+            </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+    </StackPanel>
+</Page>

@@ -1,0 +1,60 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36310.24
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Core", "src\XDecode.Core\XDecode.Core.csproj", "{7D692F87-63B7-4C0A-9E4F-A35B777C398A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Application", "src\XDecode.Application\XDecode.Application.csproj", "{0316FAAA-D7E2-42A5-9D72-36AC92C7225E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Windows", "src\XDecode.Windows\XDecode.Windows.csproj", "{7CAC2FB9-17E6-4DA1-A42E-20C120A8EF28}"
+EndProject
+Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "XDecode.ExplorerCommand", "src\XDecode.ExplorerCommand\XDecode.ExplorerCommand.vcxproj", "{8AC1195F-C9BA-47A0-A189-E23DE11469C7}"
+EndProject
+Project("{C716E427-0E01-4B52-AF0E-55C92D253474}") = "XDecode.Package", "packaging\XDecode.Package.wapproj", "{7C65B9E8-0E6D-4503-866C-37673562E8C1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Core.Tests", "tests\XDecode.Core.Tests\XDecode.Core.Tests.csproj", "{0417D445-75EF-4FE4-AF81-7A0702A07131}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Application.Tests", "tests\XDecode.Application.Tests\XDecode.Application.Tests.csproj", "{B8BFD55B-784A-4B76-9FC5-6B8C7513A5EE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Windows.Tests", "tests\XDecode.Windows.Tests\XDecode.Windows.Tests.csproj", "{A4CBD4B5-0D20-4856-B904-67F7A15B721C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7D692F87-63B7-4C0A-9E4F-A35B777C398A}.Debug|x64.ActiveCfg = Debug|x64
+		{7D692F87-63B7-4C0A-9E4F-A35B777C398A}.Debug|x64.Build.0 = Debug|x64
+		{7D692F87-63B7-4C0A-9E4F-A35B777C398A}.Release|x64.ActiveCfg = Release|x64
+		{7D692F87-63B7-4C0A-9E4F-A35B777C398A}.Release|x64.Build.0 = Release|x64
+		{0316FAAA-D7E2-42A5-9D72-36AC92C7225E}.Debug|x64.ActiveCfg = Debug|x64
+		{0316FAAA-D7E2-42A5-9D72-36AC92C7225E}.Debug|x64.Build.0 = Debug|x64
+		{0316FAAA-D7E2-42A5-9D72-36AC92C7225E}.Release|x64.ActiveCfg = Release|x64
+		{0316FAAA-D7E2-42A5-9D72-36AC92C7225E}.Release|x64.Build.0 = Release|x64
+		{7CAC2FB9-17E6-4DA1-A42E-20C120A8EF28}.Debug|x64.ActiveCfg = Debug|x64
+		{7CAC2FB9-17E6-4DA1-A42E-20C120A8EF28}.Debug|x64.Build.0 = Debug|x64
+		{7CAC2FB9-17E6-4DA1-A42E-20C120A8EF28}.Release|x64.ActiveCfg = Release|x64
+		{7CAC2FB9-17E6-4DA1-A42E-20C120A8EF28}.Release|x64.Build.0 = Release|x64
+		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Debug|x64.ActiveCfg = Debug|x64
+		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Debug|x64.Build.0 = Debug|x64
+		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Release|x64.ActiveCfg = Release|x64
+		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Release|x64.Build.0 = Release|x64
+		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Debug|x64.ActiveCfg = Debug|x64
+		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Debug|x64.Build.0 = Debug|x64
+		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Release|x64.ActiveCfg = Release|x64
+		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Release|x64.Build.0 = Release|x64
+		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Debug|x64.ActiveCfg = Debug|x64
+		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Debug|x64.Build.0 = Debug|x64
+		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Release|x64.ActiveCfg = Release|x64
+		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Release|x64.Build.0 = Release|x64
+		{B8BFD55B-784A-4B76-9FC5-6B8C7513A5EE}.Debug|x64.ActiveCfg = Debug|x64
+		{B8BFD55B-784A-4B76-9FC5-6B8C7513A5EE}.Debug|x64.Build.0 = Debug|x64
+		{B8BFD55B-784A-4B76-9FC5-6B8C7513A5EE}.Release|x64.ActiveCfg = Release|x64
+		{B8BFD55B-784A-4B76-9FC5-6B8C7513A5EE}.Release|x64.Build.0 = Release|x64
+		{A4CBD4B5-0D20-4856-B904-67F7A15B721C}.Debug|x64.ActiveCfg = Debug|x64
+		{A4CBD4B5-0D20-4856-B904-67F7A15B721C}.Debug|x64.Build.0 = Debug|x64
+		{A4CBD4B5-0D20-4856-B904-67F7A15B721C}.Release|x64.ActiveCfg = Release|x64
+		{A4CBD4B5-0D20-4856-B904-67F7A15B721C}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+EndGlobal

@@ -4,13 +4,21 @@
 
 ## 工程目标
 
-XDecode 是 macOS 13+ 的日志解密 App，包含三个边界清晰的部分：
+XDecode 同时包含 macOS 13+ Swift App 与 Windows 10 22H2+ .NET/WinUI App。
+macOS 侧包含三个边界清晰的部分：
 
 - `XDecodeCore`：纯解码逻辑、请求/结果模型，以及单文件和 ZIP 的文件发布流程。
 - `XDecodeApp`：SwiftUI、任务编排、权限、设置、FSEvents、通知和历史。
 - `XDecodeFinder`：Finder Sync 入口，只转发普通文件给主 App，不实现解密或读取主 App 设置。
 
 保持解码器可独立测试。不要把 AppKit、SwiftUI、UserDefaults、书签或通知依赖引入 `XDecodeCore`。
+
+Windows 代码位于 `Windows/`：
+
+- `XDecode.Core` 不依赖 WinUI，保持与 Swift Core 相同的模型和事务语义。
+- `XDecode.Application` 管理规则、DPAPI 设置、历史、任务队列和监听。
+- `XDecode.Windows` 只承载 WinUI 和 Windows 系统能力。
+- `XDecode.ExplorerCommand` 只转发普通文件，不读取设置、密钥或日志内容。
 
 ## 常用命令
 
@@ -27,11 +35,16 @@ swift build
 
 # 完整 App + Finder Extension 编译检查
 xcodebuild -project XDecode.xcodeproj -scheme XDecode -configuration Debug build
+
+# Windows（需在 Windows x64 开发环境）
+dotnet test Windows/XDecode.Windows.sln -p:Platform=x64
+msbuild Windows/XDecode.Windows.sln /restore /m /p:Configuration=Release /p:Platform=x64
 ```
 
 Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XDecodeApp` 或测试时，至少运行 `swift test`。涉及工程配置、Entitlements、Info.plist、Finder 扩展或打包时，再运行 `xcodebuild` 并说明签名环境。
 
 不要依赖 Xcode Scheme 运行 Package 测试；当前测试目标由 `Package.swift` 管理。
+Windows 原生、WinUI 和 MSIX 必须在 Windows CI 或 Windows 开发机验证；PFX 不得入库。
 
 ## 模块地图
 

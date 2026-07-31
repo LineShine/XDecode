@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.props" />
+  <PropertyGroup>
+    <ProjectGuid>{7C65B9E8-0E6D-4503-866C-37673562E8C1}</ProjectGuid>
+    <TargetPlatformVersion>10.0.26100.0</TargetPlatformVersion>
+    <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
+    <DefaultLanguage>zh-CN</DefaultLanguage>
+    <EntryPointProjectUniqueName>..\src\XDecode.Windows\XDecode.Windows.csproj</EntryPointProjectUniqueName>
+    <AppxPackageSigningEnabled Condition="'$(AppxPackageSigningEnabled)'==''">false</AppxPackageSigningEnabled>
+    <AppxBundle>Never</AppxBundle>
+    <AppxPackageDir>$(MSBuildProjectDirectory)\AppPackages\</AppxPackageDir>
+    <GenerateAppInstallerFile>false</GenerateAppInstallerFile>
+    <AppxPackageVersion>$(XDecodeVersion).0</AppxPackageVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\src\XDecode.Windows\XDecode.Windows.csproj">
+      <Project>{7CAC2FB9-17E6-4DA1-A42E-20C120A8EF28}</Project>
+      <Name>XDecode.Windows</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\src\XDecode.ExplorerCommand\XDecode.ExplorerCommand.vcxproj">
+      <Project>{8AC1195F-C9BA-47A0-A189-E23DE11469C7}</Project>
+      <Name>XDecode.ExplorerCommand</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Assets\LockScreenLogo.scale-200.png" />
+    <Content Include="Assets\SplashScreen.scale-200.png" />
+    <Content Include="Assets\Square44x44Logo.scale-200.png" />
+    <Content Include="Assets\Square150x150Logo.scale-200.png" />
+    <Content Include="Assets\StoreLogo.png" />
+    <Content Include="Assets\Wide310x150Logo.scale-200.png" />
+    <Content Include="..\THIRD-PARTY-NOTICES.md">
+      <Link>THIRD-PARTY-NOTICES.md</Link>
+    </Content>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Microsoft\DesktopBridge\Microsoft.DesktopBridge.targets" />
+</Project>

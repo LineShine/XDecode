@@ -1,6 +1,6 @@
 # XDecode
 
-XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlog、iOS Logan、MX FlatBuffers 日志，以及包含这些日志的 ZIP 压缩包。应用支持手动选择、拖放、打开方式、Finder 右键和文件夹自动监听，解密结果统一输出为可读的 `.log` 文件。
+XDecode 是一个原生日志解密工具，统一处理 Tencent Mars Xlog、iOS Logan、MX FlatBuffers 日志，以及包含这些日志的 ZIP 压缩包。仓库同时包含 macOS Swift 实现和位于 [`Windows/`](Windows/README.md) 的 .NET 10 / WinUI 3 实现；两端保持相同的解码与文件事务语义。
 
 > [!WARNING]
 > 单个 Xlog、MX 或 Logan 日志只有在完整解密并成功写入 `.log` 后，才会永久删除源文件。ZIP 批量处理始终保留源 ZIP。请先确认原始日志已有备份。
@@ -128,7 +128,8 @@ XDecode/
 ├── Tests/XDecodeCoreTests/       # 格式、完整性、并发输出和 ZIP 安全测试
 ├── Tests/XDecodeAppTests/        # 匹配、书签、监听、通知和抑制回环测试
 ├── script/                       # Python 协议参考与手工诊断脚本
-└── XDecode.xcodeproj/            # macOS App 与 Finder Extension 工程
+├── XDecode.xcodeproj/            # macOS App 与 Finder Extension 工程
+└── Windows/                      # .NET/WinUI、Explorer Command、MSIX 和 Windows 测试
 ```
 
 核心调用链如下：
@@ -161,6 +162,14 @@ AppModel -> AppSettings 文件名分类 -> DecodeRequest
 - `XDecodeFinder/FinderSync.swift`：Finder 菜单和普通文件转发；不读取主 App 设置或密钥。
 
 ## 构建与测试
+
+### Windows
+
+Windows 10 22H2 / Windows 11 x64 的构建、测试、vcpkg 固定版本和测试证书注入方式见
+[`Windows/README.md`](Windows/README.md)。Windows CI 执行三组 `dotnet test`、
+Release x64 构建、MSIX 打包、签名校验和安装卸载冒烟测试。
+
+### macOS
 
 要求：
 

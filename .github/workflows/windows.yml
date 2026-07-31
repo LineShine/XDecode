@@ -1,0 +1,132 @@
+name: Windows
+
+on:
+  push:
+    branches: [windows]
+  pull_request:
+    branches: [windows, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-package:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      VCPKG_INSTALLED_DIR: ${{ github.workspace }}\Windows\vcpkg_installed
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/vcpkg
+          ref: 56bb2411609227288b70117ead2c47585ba07713
+          path: .vcpkg
+
+      - name: Bootstrap vcpkg
+        run: .\.vcpkg\bootstrap-vcpkg.bat -disableMetrics
+
+      - name: Restore native dependency
+        run: >
+          .\.vcpkg\vcpkg.exe install
+          --x-manifest-root=${{ github.workspace }}\Windows
+          --x-install-root=$env:VCPKG_INSTALLED_DIR
+          --triplet=x64-windows
+
+      - name: Test Core
+        run: >
+          dotnet test Windows\tests\XDecode.Core.Tests\XDecode.Core.Tests.csproj
+          -c Release
+          -p:Platform=x64
+          -p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
+
+      - name: Test Application
+        run: >
+          dotnet test Windows\tests\XDecode.Application.Tests\XDecode.Application.Tests.csproj
+          -c Release
+          -p:Platform=x64
+          -p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
+
+      - name: Test Windows integration
+        run: >
+          dotnet test Windows\tests\XDecode.Windows.Tests\XDecode.Windows.Tests.csproj
+          -c Release
+          -p:Platform=x64
+          -p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
+
+      - name: Build Release x64
+        run: >
+          msbuild Windows\XDecode.Windows.sln
+          /restore
+          /m
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:AppxPackageSigningEnabled=false
+          /p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
+
+      - name: Decode signing certificate
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        env:
+          WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+        run: |
+          [IO.File]::WriteAllBytes(
+            "${{ runner.temp }}\xdecode-signing.pfx",
+            [Convert]::FromBase64String($env:WINDOWS_SIGNING_PFX_BASE64))
+
+      - name: Build signed self-contained MSIX
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        env:
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        run: >
+          msbuild Windows\packaging\XDecode.Package.wapproj
+          /restore
+          /m
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:AppxPackageSigningEnabled=true
+          /p:PackageCertificateKeyFile=${{ runner.temp }}\xdecode-signing.pfx
+          /p:PackageCertificatePassword=$env:WINDOWS_SIGNING_PASSWORD
+          /p:UapAppxPackageBuildMode=SideloadOnly
+          /p:AppxBundle=Never
+          /p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
+
+      - name: Verify signature and install smoke test
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        env:
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        run: |
+          $msix = Get-ChildItem Windows\packaging\AppPackages -Recurse -Filter *.msix |
+            Select-Object -First 1
+          if (-not $msix) { throw "MSIX was not produced" }
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
+            -Recurse -Filter signtool.exe |
+            Where-Object FullName -Match '\\x64\\' |
+            Select-Object -First 1
+          & $signtool.FullName verify /pa /v $msix.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Signature verification failed" }
+          $password = ConvertTo-SecureString $env:WINDOWS_SIGNING_PASSWORD -AsPlainText -Force
+          Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
+            -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password | Out-Null
+          Add-AppxPackage -Path $msix.FullName
+          $package = Get-AppxPackage -Name LineShine.XDecode
+          if (-not $package) { throw "Installed package was not found" }
+          Remove-AppxPackage -Package $package.PackageFullName
+
+      - name: Upload MSIX
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: XDecode-Windows-x64-msix
+          path: Windows/packaging/AppPackages/**/*.msix
+          if-no-files-found: error

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "xdecode-windows-native",
+  "version-string": "1.0.0",
+  "builtin-baseline": "56bb2411609227288b70117ead2c47585ba07713",
+  "dependencies": [
+    "zlib"
+  ],
+  "overrides": [
+    {
+      "name": "zlib",
+      "version": "1.3.1"
+    }
+  ]
+}

@@ -2,3 +2,10 @@
 .swiftpm/
 dist/
 /.openlist/
+.vs/
+Windows/**/bin/
+Windows/**/obj/
+Windows/packaging/AppPackages/
+Windows/vcpkg_installed/
+Windows/*.pfx
+Windows/*.cer
