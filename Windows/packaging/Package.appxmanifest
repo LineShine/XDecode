@@ -3,12 +3,13 @@
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
   xmlns:desktop6="http://schemas.microsoft.com/appx/manifest/desktop/windows10/6"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 desktop4 desktop5 desktop6 com rescap">
+  IgnorableNamespaces="uap uap3 desktop desktop4 desktop5 desktop6 com rescap">
   <Identity Name="LineShine.XDecode"
             Publisher="CN=LineShine XDecode Test"
             Version="1.0.0.0"
@@ -50,13 +51,13 @@
             </uap:SupportedFileTypes>
           </uap3:FileTypeAssociation>
         </uap:Extension>
-        <desktop6:Extension Category="windows.startupTask"
-                            Executable="XDecode.Windows.exe"
-                            EntryPoint="Windows.FullTrustApplication">
-          <desktop6:StartupTask TaskId="XDecodeStartup"
-                                Enabled="true"
-                                DisplayName="XDecode" />
-        </desktop6:Extension>
+        <desktop:Extension Category="windows.startupTask"
+                           Executable="XDecode.Windows.exe"
+                           EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="XDecodeStartup"
+                               Enabled="true"
+                               DisplayName="XDecode" />
+        </desktop:Extension>
         <desktop4:Extension Category="windows.fileExplorerContextMenus">
           <desktop4:FileExplorerContextMenus>
             <desktop5:ItemType Type="*">
