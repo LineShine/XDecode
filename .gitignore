@@ -6,6 +6,7 @@ dist/
 Windows/**/bin/
 Windows/**/obj/
 Windows/packaging/AppPackages/
+Windows/installer/Output/
 Windows/vcpkg_installed/
 Windows/*.pfx
 Windows/*.cer

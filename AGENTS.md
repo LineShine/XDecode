@@ -39,12 +39,15 @@ xcodebuild -project XDecode.xcodeproj -scheme XDecode -configuration Debug build
 # Windows（需在 Windows x64 开发环境）
 dotnet test Windows/XDecode.Windows.sln -p:Platform=x64
 msbuild Windows/XDecode.Windows.sln /restore /m /p:Configuration=Release /p:Platform=x64
+powershell -File .\Windows\installer\build-setup.ps1 -MsixPath <signed.msix> `
+  -CertificatePath <public.cer> -SigningPfxPath <private.pfx>
 ```
 
 Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XDecodeApp` 或测试时，至少运行 `swift test`。涉及工程配置、Entitlements、Info.plist、Finder 扩展或打包时，再运行 `xcodebuild` 并说明签名环境。
 
 不要依赖 Xcode Scheme 运行 Package 测试；当前测试目标由 `Package.swift` 管理。
-Windows 原生、WinUI 和 MSIX 必须在 Windows CI 或 Windows 开发机验证；PFX 不得入库。
+Windows 原生、WinUI、MSIX 和 `setup.exe` 必须在 Windows CI 或 Windows 开发机验证；
+PFX 不得入库，正式交付物必须是签名的 `XDecode-Setup-x64.exe`。
 
 ## 模块地图
 

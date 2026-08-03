@@ -18,6 +18,8 @@ jobs:
         shell: pwsh
     env:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}\Windows\vcpkg_installed
+      XDECODE_VERSION: 1.0.0
+      INNO_SETUP_VERSION: 7.0.2
 
     steps:
       - uses: actions/checkout@v4
@@ -79,10 +81,18 @@ jobs:
         if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
         env:
           WINDOWS_SIGNING_PFX_BASE64: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
         run: |
           [IO.File]::WriteAllBytes(
             "${{ runner.temp }}\xdecode-signing.pfx",
             [Convert]::FromBase64String($env:WINDOWS_SIGNING_PFX_BASE64))
+          $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
+            "${{ runner.temp }}\xdecode-signing.pfx",
+            $env:WINDOWS_SIGNING_PASSWORD,
+            [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
+          [IO.File]::WriteAllBytes(
+            "${{ runner.temp }}\xdecode-signing.cer",
+            $certificate.Export([Security.Cryptography.X509Certificates.X509ContentType]::Cert))
 
       - name: Build signed self-contained MSIX
         if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
@@ -99,9 +109,10 @@ jobs:
           /p:PackageCertificatePassword=$env:WINDOWS_SIGNING_PASSWORD
           /p:UapAppxPackageBuildMode=SideloadOnly
           /p:AppxBundle=Never
+          /p:XDecodeVersion=$env:XDECODE_VERSION
           /p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
 
-      - name: Verify signature and install smoke test
+      - name: Verify signed MSIX
         if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
         env:
           WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
@@ -113,20 +124,134 @@ jobs:
             -Recurse -Filter signtool.exe |
             Where-Object FullName -Match '\\x64\\' |
             Select-Object -First 1
-          & $signtool.FullName verify /pa /v $msix.FullName
-          if ($LASTEXITCODE -ne 0) { throw "Signature verification failed" }
           $password = ConvertTo-SecureString $env:WINDOWS_SIGNING_PASSWORD -AsPlainText -Force
-          Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
-            -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password | Out-Null
-          Add-AppxPackage -Path $msix.FullName
-          $package = Get-AppxPackage -Name LineShine.XDecode
-          if (-not $package) { throw "Installed package was not found" }
-          Remove-AppxPackage -Package $package.PackageFullName
+          $trusted = Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
+            -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password
+          try {
+            & $signtool.FullName verify /pa /v $msix.FullName
+            if ($LASTEXITCODE -ne 0) { throw "MSIX signature verification failed" }
+            Add-AppxPackage -Path $msix.FullName
+            $package = Get-AppxPackage -Name LineShine.XDecode
+            if (-not $package) { throw "Installed package was not found" }
+          }
+          finally {
+            $package = Get-AppxPackage -Name LineShine.XDecode
+            if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
+            if ($trusted) { Remove-Item -LiteralPath $trusted.PSPath -Force }
+          }
 
-      - name: Upload MSIX
+      - name: Install verified Inno Setup
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $fileName = "innosetup-$env:INNO_SETUP_VERSION-x64.exe"
+          $installer = Join-Path "${{ runner.temp }}" $fileName
+          gh release download "is-$($env:INNO_SETUP_VERSION.Replace('.', '_'))" `
+            --repo jrsoftware/issrc --pattern $fileName --dir "${{ runner.temp }}"
+          Push-Location "${{ runner.temp }}"
+          try {
+            gh release verify-asset $fileName --repo jrsoftware/issrc
+          }
+          finally {
+            Pop-Location
+          }
+          $signature = Get-AuthenticodeSignature -LiteralPath $installer
+          if ($signature.Status -ne 'Valid' -or
+              $signature.SignerCertificate.Subject -notmatch 'CN=Pyrsys B\.V\.') {
+            throw "Inno Setup download signature verification failed"
+          }
+          $installDirectory = Join-Path "${{ runner.temp }}" 'InnoSetup7'
+          $process = Start-Process -FilePath $installer -Wait -PassThru -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER',
+            "/DIR=$installDirectory")
+          if ($process.ExitCode -ne 0) {
+            throw "Inno Setup installation failed with exit code $($process.ExitCode)"
+          }
+          $compiler = Join-Path $installDirectory 'ISCC.exe'
+          if (-not (Test-Path -LiteralPath $compiler -PathType Leaf)) {
+            throw "ISCC.exe was not installed"
+          }
+          "INNO_COMPILER=$compiler" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure Inno Setup commercial license
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' && secrets.INNO_SETUP_LICENSE_KEY != '' }}
+        env:
+          INNO_SETUP_LICENSE_KEY: ${{ secrets.INNO_SETUP_LICENSE_KEY }}
+        run: |
+          $path = 'HKCU:\Software\Jordan Russell\Inno Setup\License'
+          New-Item -Path $path -Force | Out-Null
+          New-ItemProperty -Path $path -Name LicenseKey `
+            -Value $env:INNO_SETUP_LICENSE_KEY -PropertyType String -Force | Out-Null
+
+      - name: Build signed setup.exe
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        env:
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
+        run: |
+          $msix = Get-ChildItem Windows\packaging\AppPackages -Recurse -Filter *.msix |
+            Select-Object -First 1
+          if (-not $msix) { throw "MSIX was not produced" }
+          & .\Windows\installer\build-setup.ps1 `
+            -MsixPath $msix.FullName `
+            -CertificatePath "${{ runner.temp }}\xdecode-signing.cer" `
+            -SigningPfxPath "${{ runner.temp }}\xdecode-signing.pfx" `
+            -Version $env:XDECODE_VERSION `
+            -OutputDirectory "${{ github.workspace }}\Windows\installer\Output" `
+            -InnoCompiler $env:INNO_COMPILER
+
+      - name: Install setup.exe smoke test
+        if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
+        run: |
+          $setup = Get-ChildItem Windows\installer\Output -Filter *.exe |
+            Select-Object -First 1
+          if (-not $setup) { throw "setup.exe was not produced" }
+          $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
+            "${{ runner.temp }}\xdecode-signing.cer")
+          Get-ChildItem Cert:\CurrentUser\TrustedPeople |
+            Where-Object Thumbprint -EQ $certificate.Thumbprint |
+            Remove-Item -Force
+          $existing = Get-AppxPackage -Name LineShine.XDecode
+          if ($existing) { Remove-AppxPackage -Package $existing.PackageFullName }
+
+          $signature = Get-AuthenticodeSignature -LiteralPath $setup.FullName
+          if ($null -eq $signature.SignerCertificate -or
+              $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
+            throw "setup.exe signer does not match the MSIX signer"
+          }
+
+          $logPath = "${{ runner.temp }}\xdecode-setup.log"
+          try {
+            $process = Start-Process -FilePath $setup.FullName -Wait -PassThru -ArgumentList @(
+              '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+              '/ACCEPTTESTCERT=1', "/LOG=$logPath")
+            if ($process.ExitCode -ne 0) {
+              if (Test-Path $logPath) { Get-Content $logPath }
+              throw "setup.exe failed with exit code $($process.ExitCode)"
+            }
+            $package = Get-AppxPackage -Name LineShine.XDecode
+            if (-not $package -or
+                [version]$package.Version -ne [version]"$env:XDECODE_VERSION.0") {
+              throw "setup.exe did not install the expected package version"
+            }
+            $remainingCertificate = Get-ChildItem Cert:\CurrentUser\TrustedPeople |
+              Where-Object Thumbprint -EQ $certificate.Thumbprint
+            if ($remainingCertificate) {
+              throw "setup.exe left its temporary signing certificate trusted"
+            }
+          }
+          finally {
+            $package = Get-AppxPackage -Name LineShine.XDecode
+            if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
+            Get-ChildItem Cert:\CurrentUser\TrustedPeople |
+              Where-Object Thumbprint -EQ $certificate.Thumbprint |
+              Remove-Item -Force
+          }
+
+      - name: Upload setup.exe
         if: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: XDecode-Windows-x64-msix
-          path: Windows/packaging/AppPackages/**/*.msix
+          name: XDecode-Windows-x64-setup
+          path: Windows/installer/Output/XDecode-Setup-x64.exe
           if-no-files-found: error
