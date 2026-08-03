@@ -259,10 +259,17 @@ jobs:
               if (Test-Path $logPath) { Get-Content $logPath }
               throw "setup.exe failed with exit code $($process.ExitCode)"
             }
-            $package = Get-AppxPackage -Name LineShine.XDecode
-            if (-not $package -or
-                [version]$package.Version -ne [version]"$env:XDECODE_VERSION.0") {
-              throw "setup.exe did not install the expected package version"
+            $expectedVersion = [version]"$($env:XDECODE_VERSION).0"
+            $package = Get-AppxPackage -Name LineShine.XDecode |
+              Sort-Object Version -Descending |
+              Select-Object -First 1
+            if (-not $package) {
+              if (Test-Path $logPath) { Get-Content $logPath }
+              throw "setup.exe did not install the XDecode package"
+            }
+            if ([version]$package.Version -ne $expectedVersion) {
+              if (Test-Path $logPath) { Get-Content $logPath }
+              throw "setup.exe installed version $($package.Version), expected $expectedVersion"
             }
             $remainingCertificate = Get-ChildItem Cert:\CurrentUser\TrustedPeople |
               Where-Object Thumbprint -EQ $certificate.Thumbprint
