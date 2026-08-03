@@ -67,15 +67,17 @@ $env:WINDOWS_SIGNING_PASSWORD = "仅在当前终端设置的 PFX 密码"
 - 包名不是 `LineShine.XDecode`，Publisher 与证书不一致，或架构不是 x64。
 - `setup.exe` 未能使用同一 PFX 完成 Authenticode 签名。
 
-普通安装直接双击 `XDecode-Setup-x64.exe`。无交互部署必须显式确认内部测试证书：
+普通安装直接双击 `XDecode-Setup-x64.exe`，并在标准 UAC 提示中允许管理员权限，以便
+Windows 在本机 `TrustedPeople` 中临时信任内部测试证书。无交互部署必须从管理员终端
+启动，并显式确认内部测试证书：
 
 ```powershell
 .\XDecode-Setup-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACCEPTTESTCERT=1
 ```
 
-安装器只在部署期间临时信任此前未受信任的内置证书，并在成功或失败后移除；用户原本
-已经信任的同一证书不会被删除。升级和卸载仍使用 Windows“已安装的应用”中的 XDecode
-包记录，安装器本身不创建第二个卸载项。
+安装器只在部署期间向本机 `TrustedPeople` 临时加入此前未受信任的内置证书，并在成功
+或失败后移除；用户原本已经信任的同一证书不会被删除。升级和卸载仍使用 Windows
+“已安装的应用”中的 XDecode 包记录，安装器本身不创建第二个卸载项。
 
 CI 需要设置 `WINDOWS_SIGNING_PFX_BASE64`、`WINDOWS_SIGNING_PASSWORD`。商业使用
 Inno Setup 时再设置 `INNO_SETUP_LICENSE_KEY`。Windows workflow 会验证 Inno Setup 官方

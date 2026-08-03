@@ -238,9 +238,12 @@ jobs:
           if (-not $setup) { throw "setup.exe was not produced" }
           $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
             "${{ runner.temp }}\xdecode-signing.cer")
-          Get-ChildItem Cert:\CurrentUser\TrustedPeople |
-            Where-Object Thumbprint -EQ $certificate.Thumbprint |
-            Remove-Item -Force
+          @('Cert:\CurrentUser\TrustedPeople', 'Cert:\LocalMachine\TrustedPeople') |
+            ForEach-Object {
+              Get-ChildItem $_ |
+                Where-Object Thumbprint -EQ $certificate.Thumbprint |
+                Remove-Item -Force
+            }
           $existing = Get-AppxPackage -Name LineShine.XDecode
           if ($existing) { Remove-AppxPackage -Package $existing.PackageFullName }
 
@@ -271,7 +274,7 @@ jobs:
               if (Test-Path $logPath) { Get-Content $logPath }
               throw "setup.exe installed version $($package.Version), expected $expectedVersion"
             }
-            $remainingCertificate = Get-ChildItem Cert:\CurrentUser\TrustedPeople |
+            $remainingCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople |
               Where-Object Thumbprint -EQ $certificate.Thumbprint
             if ($remainingCertificate) {
               throw "setup.exe left its temporary signing certificate trusted"
@@ -280,9 +283,12 @@ jobs:
           finally {
             $package = Get-AppxPackage -Name LineShine.XDecode
             if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
-            Get-ChildItem Cert:\CurrentUser\TrustedPeople |
-              Where-Object Thumbprint -EQ $certificate.Thumbprint |
-              Remove-Item -Force
+            @('Cert:\CurrentUser\TrustedPeople', 'Cert:\LocalMachine\TrustedPeople') |
+              ForEach-Object {
+                Get-ChildItem $_ |
+                  Where-Object Thumbprint -EQ $certificate.Thumbprint |
+                  Remove-Item -Force
+              }
           }
 
       - name: Upload setup.exe

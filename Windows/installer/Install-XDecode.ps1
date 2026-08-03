@@ -17,7 +17,7 @@ function Test-TrustedCertificate {
 
     $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
         [System.Security.Cryptography.X509Certificates.StoreName]::TrustedPeople,
-        [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+        [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
     $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadOnly)
     try {
         return $store.Certificates.Find(
@@ -35,7 +35,7 @@ function Add-TrustedCertificate {
 
     $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
         [System.Security.Cryptography.X509Certificates.StoreName]::TrustedPeople,
-        [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+        [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
     $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
     try {
         $store.Add($Certificate)
@@ -50,7 +50,7 @@ function Remove-TrustedCertificate {
 
     $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
         [System.Security.Cryptography.X509Certificates.StoreName]::TrustedPeople,
-        [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+        [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
     $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
     try {
         $matches = $store.Certificates.Find(
@@ -67,6 +67,12 @@ function Remove-TrustedCertificate {
 }
 
 try {
+    $principal = [Security.Principal.WindowsPrincipal]::new(
+        [Security.Principal.WindowsIdentity]::GetCurrent())
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw 'Installing the XDecode test certificate requires administrator privileges'
+    }
+
     if (-not (Test-Path -LiteralPath $MsixPath -PathType Leaf)) {
         throw "MSIX was not found: $MsixPath"
     }
