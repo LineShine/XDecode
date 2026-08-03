@@ -128,9 +128,13 @@ jobs:
             Where-Object FullName -Match '\\x64\\' |
             Select-Object -First 1
           $password = ConvertTo-SecureString $env:WINDOWS_SIGNING_PASSWORD -AsPlainText -Force
-          $trusted = Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
-            -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password
+          $trusted = $null
+          $trustedRoot = $null
           try {
+            $trusted = Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
+              -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password
+            $trustedRoot = Import-Certificate -FilePath "${{ runner.temp }}\xdecode-signing.cer" `
+              -CertStoreLocation Cert:\CurrentUser\Root
             & $signtool.FullName verify /pa /v $msix.FullName
             if ($LASTEXITCODE -ne 0) { throw "MSIX signature verification failed" }
             Add-AppxPackage -Path $msix.FullName
@@ -141,6 +145,7 @@ jobs:
             $package = Get-AppxPackage -Name LineShine.XDecode
             if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
             if ($trusted) { Remove-Item -LiteralPath $trusted.PSPath -Force }
+            if ($trustedRoot) { Remove-Item -LiteralPath $trustedRoot.PSPath -Force }
           }
 
       - name: Install verified Inno Setup
