@@ -75,7 +75,7 @@ procedure InstallPackage();
 var
   PowerShellPath: String;
   PowerShellLogPath: String;
-  PowerShellError: String;
+  PowerShellError: AnsiString;
   Parameters: String;
   ResultCode: Integer;
 begin
