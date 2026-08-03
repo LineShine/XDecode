@@ -73,8 +73,15 @@ function Get-XDecodeMsixIdentity {
     )
 
     $manifestBytes = Get-XDecodeMsixEntryBytes -Path $Path -EntryName 'AppxManifest.xml'
-    $manifestText = [System.Text.Encoding]::UTF8.GetString($manifestBytes)
-    [xml]$manifest = $manifestText
+    $manifest = [System.Xml.XmlDocument]::new()
+    $manifest.XmlResolver = $null
+    $manifestStream = [System.IO.MemoryStream]::new($manifestBytes, $false)
+    try {
+        $manifest.Load($manifestStream)
+    }
+    finally {
+        $manifestStream.Dispose()
+    }
     $identity = $manifest.Package.Identity
     if ($null -eq $identity) {
         throw 'MSIX manifest does not contain an Identity element'
