@@ -129,13 +129,12 @@ jobs:
             Select-Object -First 1
           $password = ConvertTo-SecureString $env:WINDOWS_SIGNING_PASSWORD -AsPlainText -Force
           $trusted = $null
-          $rootThumbprint = $null
+          $trustedRoot = $null
           try {
             $trusted = Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
               -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password
-            & certutil.exe -user -f -silent -addstore Root "${{ runner.temp }}\xdecode-signing.cer"
-            if ($LASTEXITCODE -ne 0) { throw "Test root certificate import failed" }
-            $rootThumbprint = $trusted.Thumbprint
+            $trustedRoot = Import-Certificate -FilePath "${{ runner.temp }}\xdecode-signing.cer" `
+              -CertStoreLocation Cert:\LocalMachine\Root
             & $signtool.FullName verify /pa /v $msix.FullName
             if ($LASTEXITCODE -ne 0) { throw "MSIX signature verification failed" }
             Add-AppxPackage -Path $msix.FullName
@@ -145,9 +144,7 @@ jobs:
           finally {
             $package = Get-AppxPackage -Name LineShine.XDecode
             if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
-            if ($rootThumbprint) {
-              & certutil.exe -user -f -silent -delstore Root $rootThumbprint | Out-Null
-            }
+            if ($trustedRoot) { Remove-Item -LiteralPath $trustedRoot.PSPath -Force }
             if ($trusted) { Remove-Item -LiteralPath $trusted.PSPath -Force }
           }
 
