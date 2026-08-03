@@ -141,9 +141,11 @@ public sealed class SettingsAndServicesTests
             return new DecodeResult(request, DecodeState.Completed, null, "done", true);
         }, maximumConcurrency: 1);
         var running = queue.EnqueueAsync(new DecodeRequest(
-            @"C:\logs\running.xlog", DecodeOrigin.FilePicker, LogFormat.Xlog));
+            @"C:\logs\running.xlog", DecodeOrigin.FilePicker, LogFormat.Xlog),
+            TestContext.Current.CancellationToken);
         var pending = queue.EnqueueAsync(new DecodeRequest(
-            @"C:\logs\pending.xlog", DecodeOrigin.FilePicker, LogFormat.Xlog));
+            @"C:\logs\pending.xlog", DecodeOrigin.FilePicker, LogFormat.Xlog),
+            TestContext.Current.CancellationToken);
         await started.Task.WaitAsync(
             TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
