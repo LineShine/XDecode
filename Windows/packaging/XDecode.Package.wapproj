@@ -7,6 +7,7 @@
     <TargetPlatformMinVersion>10.0.19041.0</TargetPlatformMinVersion>
     <DefaultLanguage>zh-CN</DefaultLanguage>
     <EntryPointProjectUniqueName>..\src\XDecode.Windows\XDecode.Windows.csproj</EntryPointProjectUniqueName>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <AppxPackageSigningEnabled Condition="'$(AppxPackageSigningEnabled)'==''">false</AppxPackageSigningEnabled>
     <AppxBundle>Never</AppxBundle>
     <AppxPackageDir>$(MSBuildProjectDirectory)\AppPackages\</AppxPackageDir>
