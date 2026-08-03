@@ -133,7 +133,7 @@ jobs:
           try {
             $trusted = Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
               -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password
-            & certutil.exe -user -f -addstore Root "${{ runner.temp }}\xdecode-signing.cer"
+            & certutil.exe -user -f -silent -addstore Root "${{ runner.temp }}\xdecode-signing.cer"
             if ($LASTEXITCODE -ne 0) { throw "Test root certificate import failed" }
             $rootThumbprint = $trusted.Thumbprint
             & $signtool.FullName verify /pa /v $msix.FullName
@@ -146,7 +146,7 @@ jobs:
             $package = Get-AppxPackage -Name LineShine.XDecode
             if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
             if ($rootThumbprint) {
-              & certutil.exe -user -f -delstore Root $rootThumbprint | Out-Null
+              & certutil.exe -user -f -silent -delstore Root $rootThumbprint | Out-Null
             }
             if ($trusted) { Remove-Item -LiteralPath $trusted.PSPath -Force }
           }
