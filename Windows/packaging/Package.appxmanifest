@@ -52,7 +52,7 @@
           </uap3:FileTypeAssociation>
         </uap:Extension>
         <desktop:Extension Category="windows.startupTask"
-                           Executable="XDecode.Windows.exe"
+                           Executable="$targetnametoken$.exe"
                            EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="XDecodeStartup"
                                Enabled="true"
