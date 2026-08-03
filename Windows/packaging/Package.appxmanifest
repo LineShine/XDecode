@@ -62,14 +62,14 @@
           <desktop4:FileExplorerContextMenus>
             <desktop5:ItemType Type="*">
               <desktop5:Verb Id="XDecodeDecrypt"
-                             Clsid="{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}" />
+                             Clsid="A9D140B0-2466-47AB-88F4-1A2D0C7BBE12" />
             </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:SurrogateServer DisplayName="XDecode Explorer Command">
-              <com:Class Id="{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}"
+              <com:Class Id="A9D140B0-2466-47AB-88F4-1A2D0C7BBE12"
                          Path="XDecode.ExplorerCommand.dll"
                          ThreadingModel="STA" />
             </com:SurrogateServer>
