@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$MsixPath,
     [Parameter(Mandatory = $true)]
-    [string]$CertificatePath
+    [string]$CertificatePath,
+    [string]$LogPath
 )
 
 Set-StrictMode -Version Latest
@@ -123,6 +124,14 @@ try {
     exit 0
 }
 catch {
-    Write-Error $_
+    $errorText = $_ | Out-String
+    if (-not [string]::IsNullOrWhiteSpace($LogPath)) {
+        try {
+            $errorText | Out-File -LiteralPath $LogPath -Encoding utf8 -Force
+        }
+        catch {
+        }
+    }
+    Write-Error $errorText
     exit 1
 }
