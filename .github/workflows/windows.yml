@@ -155,14 +155,34 @@ jobs:
         run: |
           $fileName = "innosetup-$env:INNO_SETUP_VERSION-x64.exe"
           $installer = Join-Path "${{ runner.temp }}" $fileName
-          gh release download "is-$($env:INNO_SETUP_VERSION.Replace('.', '_'))" `
-            --repo jrsoftware/issrc --pattern $fileName --dir "${{ runner.temp }}"
+          $release = "is-$($env:INNO_SETUP_VERSION.Replace('.', '_'))"
+          $downloaded = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            gh release download $release --repo jrsoftware/issrc --pattern $fileName `
+              --dir "${{ runner.temp }}" --clobber
+            if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $installer -PathType Leaf)) {
+              $downloaded = $true
+              break
+            }
+            if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+          }
+          if (-not $downloaded) { throw "Inno Setup download failed after 3 attempts" }
+
+          $verified = $false
           Push-Location "${{ runner.temp }}"
           try {
-            gh release verify-asset $fileName --repo jrsoftware/issrc
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+              gh release verify-asset $fileName --repo jrsoftware/issrc
+              if ($LASTEXITCODE -eq 0) {
+                $verified = $true
+                break
+              }
+              if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+            }
           }
-          finally {
-            Pop-Location
+          finally { Pop-Location }
+          if (-not $verified) {
+            throw "Inno Setup release asset verification failed after 3 attempts"
           }
           $signature = Get-AuthenticodeSignature -LiteralPath $installer
           if ($signature.Status -ne 'Valid' -or
