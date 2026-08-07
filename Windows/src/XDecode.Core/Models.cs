@@ -1,37 +1,42 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Org.BouncyCastle.Asn1.Sec;
 using Org.BouncyCastle.Math;
 
 namespace XDecode.Core;
 
-[JsonConverter(typeof(JsonStringEnumConverter<LogFormat>))]
+[JsonConverter(typeof(CamelCaseJsonStringEnumConverter<LogFormat>))]
 public enum LogFormat
 {
-    [JsonStringEnumMemberName("xlog")] Xlog,
-    [JsonStringEnumMemberName("mx")] Mx,
-    [JsonStringEnumMemberName("logan")] Logan,
-    [JsonStringEnumMemberName("zip")] Zip
+    Xlog,
+    Mx,
+    Logan,
+    Zip
 }
 
-[JsonConverter(typeof(JsonStringEnumConverter<DecodeOrigin>))]
+[JsonConverter(typeof(CamelCaseJsonStringEnumConverter<DecodeOrigin>))]
 public enum DecodeOrigin
 {
-    [JsonStringEnumMemberName("automatic")] Automatic,
-    [JsonStringEnumMemberName("dragAndDrop")] DragAndDrop,
-    [JsonStringEnumMemberName("filePicker")] FilePicker,
-    [JsonStringEnumMemberName("explorer")] Explorer,
-    [JsonStringEnumMemberName("openWith")] OpenWith
+    Automatic,
+    DragAndDrop,
+    FilePicker,
+    Explorer,
+    OpenWith
 }
 
-[JsonConverter(typeof(JsonStringEnumConverter<DecodeState>))]
+[JsonConverter(typeof(CamelCaseJsonStringEnumConverter<DecodeState>))]
 public enum DecodeState
 {
-    [JsonStringEnumMemberName("completed")] Completed,
-    [JsonStringEnumMemberName("partiallyCompleted")] PartiallyCompleted,
-    [JsonStringEnumMemberName("completedWithWarning")] CompletedWithWarning,
-    [JsonStringEnumMemberName("skipped")] Skipped,
-    [JsonStringEnumMemberName("failed")] Failed
+    Completed,
+    PartiallyCompleted,
+    CompletedWithWarning,
+    Skipped,
+    Failed
 }
+
+public sealed class CamelCaseJsonStringEnumConverter<TEnum>()
+    : JsonStringEnumConverter<TEnum>(JsonNamingPolicy.CamelCase)
+    where TEnum : struct, Enum;
 
 public sealed record DecodeRequest(
     Guid Id,

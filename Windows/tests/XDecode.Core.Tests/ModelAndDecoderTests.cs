@@ -24,8 +24,34 @@ public sealed class ModelAndDecoderTests
     [InlineData(DecodeState.CompletedWithWarning, "\"completedWithWarning\"")]
     [InlineData(DecodeState.Skipped, "\"skipped\"")]
     [InlineData(DecodeState.Failed, "\"failed\"")]
-    public void DecodeStatesPreserveWireValues(DecodeState state, string expected) =>
+    public void DecodeStatesPreserveWireValues(DecodeState state, string expected)
+    {
         Assert.Equal(expected, JsonSerializer.Serialize(state));
+        Assert.Equal(state, JsonSerializer.Deserialize<DecodeState>(expected));
+    }
+
+    [Theory]
+    [InlineData(LogFormat.Xlog, "\"xlog\"")]
+    [InlineData(LogFormat.Mx, "\"mx\"")]
+    [InlineData(LogFormat.Logan, "\"logan\"")]
+    [InlineData(LogFormat.Zip, "\"zip\"")]
+    public void LogFormatsPreserveWireValues(LogFormat format, string expected)
+    {
+        Assert.Equal(expected, JsonSerializer.Serialize(format));
+        Assert.Equal(format, JsonSerializer.Deserialize<LogFormat>(expected));
+    }
+
+    [Theory]
+    [InlineData(DecodeOrigin.Automatic, "\"automatic\"")]
+    [InlineData(DecodeOrigin.DragAndDrop, "\"dragAndDrop\"")]
+    [InlineData(DecodeOrigin.FilePicker, "\"filePicker\"")]
+    [InlineData(DecodeOrigin.Explorer, "\"explorer\"")]
+    [InlineData(DecodeOrigin.OpenWith, "\"openWith\"")]
+    public void DecodeOriginsPreserveWireValues(DecodeOrigin origin, string expected)
+    {
+        Assert.Equal(expected, JsonSerializer.Serialize(origin));
+        Assert.Equal(origin, JsonSerializer.Deserialize<DecodeOrigin>(expected));
+    }
 
     [Theory]
     [InlineData("2026-7-27")]
