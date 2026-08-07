@@ -67,13 +67,20 @@ public sealed class TrayIconService : IDisposable
             InfoTitle = ""
         };
         StartupTrace.Write("Tray: adding icon");
-        if (!ShellNotifyIcon(NimAdd, ref _iconData))
+        for (var attempt = 1; attempt <= 4; attempt++)
         {
-            RemoveWindowSubclass(_windowHandle, _subclassProcedure, SubclassId);
-            throw new InvalidOperationException("无法创建 XDecode 系统托盘图标");
+            if (ShellNotifyIcon(NimAdd, ref _iconData))
+            {
+                _initialized = true;
+                StartupTrace.Write("Tray: visible");
+                return;
+            }
+            StartupTrace.Write(
+                $"Tray: add attempt {attempt} failed with Win32 error {Marshal.GetLastWin32Error()}");
+            if (attempt < 4) Thread.Sleep(200);
         }
-        _initialized = true;
-        StartupTrace.Write("Tray: visible");
+        RemoveWindowSubclass(_windowHandle, _subclassProcedure, SubclassId);
+        throw new InvalidOperationException("无法创建 XDecode 系统托盘图标");
     }
 
     public void UpdateRecent(IEnumerable<DecodeResult> results)

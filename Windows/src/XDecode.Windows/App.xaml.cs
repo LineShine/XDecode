@@ -10,6 +10,7 @@ public partial class App : Microsoft.UI.Xaml.Application
 {
     private MainWindow? _window;
     private AppServices? _services;
+    private SingleInstanceCoordinator? _singleInstance;
     public static App CurrentApp => (App)Current;
     public AppServices Services => _services ?? throw new InvalidOperationException("应用尚未初始化");
     public MainWindow MainWindow => _window ?? throw new InvalidOperationException("主窗口尚未初始化");
@@ -29,11 +30,16 @@ public partial class App : Microsoft.UI.Xaml.Application
         try
         {
             var current = AppInstance.GetCurrent();
-            var main = AppInstance.FindOrRegisterForKey("XDecode.Main");
-            StartupTrace.Write($"OnLaunched: app instance ready, current={main.IsCurrent}");
-            if (!main.IsCurrent)
+            var activatedArguments = current.GetActivatedEventArgs();
+            _singleInstance = new SingleInstanceCoordinator();
+            StartupTrace.Write($"OnLaunched: primary instance={_singleInstance.IsPrimary}");
+            if (!_singleInstance.IsPrimary)
             {
-                await main.RedirectActivationToAsync(current.GetActivatedEventArgs());
+                var activation = ParseActivation(activatedArguments, initial: false);
+                if (!await _singleInstance.ForwardAsync(activation))
+                    StartupTrace.Write("OnLaunched: failed to forward activation to primary instance");
+                await _singleInstance.DisposeAsync();
+                _singleInstance = null;
                 Exit();
                 return;
             }
@@ -47,29 +53,34 @@ public partial class App : Microsoft.UI.Xaml.Application
             StartupTrace.Write("OnLaunched: creating main window");
             _window = new MainWindow();
             StartupTrace.Write("OnLaunched: main window created");
-            main.Activated += OnActivated;
             await _services.InitializeAsync(_window);
             StartupTrace.Write("OnLaunched: services initialized");
-            await HandleActivationAsync(current.GetActivatedEventArgs(), initial: true);
+            _singleInstance.ActivationReceived += OnInstanceActivation;
+            _singleInstance.StartListening();
+            await ApplyActivationAsync(ParseActivation(activatedArguments, initial: true));
             StartupTrace.Write("OnLaunched: complete");
         }
         catch (Exception exception)
         {
             StartupTrace.Write($"OnLaunched failed: {exception}");
-            throw;
+            try { await ShutdownAsync(); }
+            catch (Exception shutdownException)
+            {
+                StartupTrace.Write($"Shutdown after launch failure failed: {shutdownException}");
+            }
+            Exit();
         }
     }
 
-    private void OnActivated(object? sender, AppActivationArguments arguments)
+    private void OnInstanceActivation(InstanceActivation activation)
     {
         _window?.DispatcherQueue.TryEnqueue(
             DispatcherQueuePriority.Normal,
-            () => _ = HandleActivationAsync(arguments, initial: false));
+            () => _ = ApplyActivationAsync(activation));
     }
 
-    private async Task HandleActivationAsync(AppActivationArguments arguments, bool initial)
+    private static InstanceActivation ParseActivation(AppActivationArguments arguments, bool initial)
     {
-        if (_window is null || _services is null) return;
         var paths = new List<string>();
         var origin = DecodeOrigin.OpenWith;
         bool? showWindow = initial ? true : null;
@@ -92,9 +103,35 @@ public partial class App : Microsoft.UI.Xaml.Application
                 origin = parsed.Origin;
                 break;
         }
-        if (showWindow == true) _window.ShowAndActivate();
-        else if (showWindow == false) _window.Hide();
-        if (paths.Count > 0)
-            await _services.EnqueueAsync(paths, origin);
+        return new InstanceActivation(showWindow, origin, paths.ToArray());
+    }
+
+    private async Task ApplyActivationAsync(InstanceActivation activation)
+    {
+        if (_window is null || _services is null) return;
+        if (activation.ShowWindow == true) _window.ShowAndActivate();
+        else if (activation.ShowWindow == false) _window.Hide();
+        if (activation.Paths.Length > 0)
+            await _services.EnqueueAsync(activation.Paths, activation.Origin);
+    }
+
+    public async Task ShutdownAsync()
+    {
+        var services = _services;
+        _services = null;
+        try
+        {
+            if (services is not null) await services.DisposeAsync();
+        }
+        finally
+        {
+            var singleInstance = _singleInstance;
+            _singleInstance = null;
+            if (singleInstance is not null)
+            {
+                singleInstance.ActivationReceived -= OnInstanceActivation;
+                await singleInstance.DisposeAsync();
+            }
+        }
     }
 }

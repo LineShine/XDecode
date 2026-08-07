@@ -82,12 +82,14 @@ Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -N
 Filename: "{app}\XDecode.Windows.exe"; Description: "启动 XDecode"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{localappdata}\LineShine\XDecode"
+Type: filesandordirs; Name: "{localappdata}\LineShine\XDecode"; Check: ShouldDeleteUserData
 
 [Code]
 var
   ExistingInstall: Boolean;
   StartupWasEnabled: Boolean;
+  ExistingUninstallString: String;
+  ReinstallPage: TInputOptionWizardPage;
 
 function TakeVersionPart(var Value: String): Integer;
 var
@@ -139,6 +141,12 @@ begin
   ExistingInstall := RegKeyExists(
     HKCU,
     'Software\Microsoft\Windows\CurrentVersion\Uninstall\LineShine.XDecode.Setup_is1');
+  if ExistingInstall then
+    RegQueryStringValue(
+      HKCU,
+      'Software\Microsoft\Windows\CurrentVersion\Uninstall\LineShine.XDecode.Setup_is1',
+      'UninstallString',
+      ExistingUninstallString);
   StartupWasEnabled := RegValueExists(
     HKCU,
     'Software\Microsoft\Windows\CurrentVersion\Run',
@@ -159,6 +167,120 @@ begin
       IDOK);
     Result := False;
   end;
+end;
+
+procedure InitializeWizard();
+begin
+  ReinstallPage := CreateInputOptionPage(
+    wpWelcome,
+    '已安装 XDecode',
+    '请选择安装方式',
+    '检测到当前用户已安装 XDecode。建议先卸载现有版本再继续安装。',
+    True,
+    False);
+  ReinstallPage.Add('卸载现有版本后重新安装（推荐）');
+  ReinstallPage.Add('不卸载，直接覆盖安装');
+  ReinstallPage.SelectedValueIndex := 0;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := (PageID = ReinstallPage.ID) and (not ExistingInstall);
+end;
+
+function CopyUserData(SourceDirectory, DestinationDirectory: String): Boolean;
+var
+  ResultCode: Integer;
+  Arguments: String;
+begin
+  Result := True;
+  if not DirExists(SourceDirectory) then
+    Exit;
+  ForceDirectories(DestinationDirectory);
+  Arguments :=
+    '"' + SourceDirectory + '" "' + DestinationDirectory +
+    '" /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /NFL /NDL /NJH /NJS /NP';
+  Result := Exec(
+    ExpandConstant('{sys}\robocopy.exe'),
+    Arguments,
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode) and (ResultCode <= 7);
+end;
+
+function UninstallExistingVersion(): String;
+var
+  ResultCode: Integer;
+  UserDataDirectory: String;
+  BackupDirectory: String;
+  UninstallerPath: String;
+begin
+  Result := '';
+  if ExistingUninstallString = '' then
+  begin
+    Result := '无法找到现有 XDecode 的卸载程序。请选择“直接覆盖安装”后重试。';
+    Exit;
+  end;
+
+  UserDataDirectory := ExpandConstant('{localappdata}\LineShine\XDecode');
+  BackupDirectory := ExpandConstant(
+    '{localappdata}\LineShine\XDecode-Reinstall-Backup');
+  DelTree(BackupDirectory, True, True, True);
+  if not CopyUserData(UserDataDirectory, BackupDirectory) then
+  begin
+    Result := '无法备份现有 XDecode 设置，已取消卸载以避免丢失密钥。';
+    Exit;
+  end;
+
+  Exec(
+    ExpandConstant('{sys}\taskkill.exe'),
+    '/F /T /IM XDecode.Windows.exe',
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode);
+
+  UninstallerPath := RemoveQuotes(ExistingUninstallString);
+  if (not Exec(
+        UninstallerPath,
+        '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /KEEPUSERDATA',
+        '',
+        SW_HIDE,
+        ewWaitUntilTerminated,
+        ResultCode)) or (ResultCode <> 0) then
+  begin
+    Result := '现有 XDecode 卸载失败，请关闭应用后重试。';
+    Exit;
+  end;
+
+  if DirExists(BackupDirectory) and
+     (not CopyUserData(BackupDirectory, UserDataDirectory)) then
+  begin
+    Result := '现有版本已卸载，但无法恢复 XDecode 设置。备份仍保留在 XDecode-Reinstall-Backup 目录。';
+    Exit;
+  end;
+  DelTree(BackupDirectory, True, True, True);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if ExistingInstall and (ReinstallPage.SelectedValueIndex = 0) then
+    Result := UninstallExistingVersion();
+end;
+
+function ShouldDeleteUserData(): Boolean;
+var
+  Index: Integer;
+begin
+  Result := True;
+  for Index := 1 to ParamCount do
+    if CompareText(ParamStr(Index), '/KEEPUSERDATA') = 0 then
+    begin
+      Result := False;
+      Exit;
+    end;
 end;
 
 function ShouldInstallStartup(): Boolean;

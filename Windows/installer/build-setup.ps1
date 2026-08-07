@@ -2,13 +2,9 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$PublishDirectory,
-    [Parameter(Mandatory = $true)]
-    [string]$SigningPfxPath,
-    [string]$SigningPassword = $env:WINDOWS_SIGNING_PASSWORD,
     [string]$Version = '1.0.0',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'Output'),
-    [string]$InnoCompiler,
-    [string]$SignTool
+    [string]$InnoCompiler
 )
 
 Set-StrictMode -Version Latest
@@ -17,12 +13,8 @@ $ErrorActionPreference = 'Stop'
 if ($Version -notmatch '^\d+\.\d+\.\d+$') {
     throw 'Version must contain exactly three numeric components, for example 1.0.0'
 }
-if ([string]::IsNullOrWhiteSpace($SigningPassword)) {
-    throw 'WINDOWS_SIGNING_PASSWORD or -SigningPassword is required'
-}
 
 $resolvedPublish = (Resolve-Path -LiteralPath $PublishDirectory).Path
-$resolvedPfx = (Resolve-Path -LiteralPath $SigningPfxPath).Path
 $appPath = Join-Path $resolvedPublish 'XDecode.Windows.exe'
 $explorerCommandPath = Join-Path $resolvedPublish 'XDecode.ExplorerCommand.dll'
 if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) {
@@ -59,12 +51,10 @@ if ($actualFileVersion -ne $expectedFileVersion) {
     throw "XDecode.Windows.exe version $actualFileVersion does not match $expectedFileVersion"
 }
 
-$certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
-    $resolvedPfx,
-    $SigningPassword,
-    [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
-if (-not $certificate.HasPrivateKey) {
-    throw 'The supplied PFX does not contain a private key'
+foreach ($target in @($appPath, $explorerCommandPath)) {
+    if ((Get-AuthenticodeSignature -LiteralPath $target).Status -ne 'NotSigned') {
+        throw "$target must be unsigned"
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($InnoCompiler)) {
@@ -82,30 +72,6 @@ if ([string]::IsNullOrWhiteSpace($InnoCompiler) -or
     throw 'Inno Setup 7 ISCC.exe was not found'
 }
 
-if ([string]::IsNullOrWhiteSpace($SignTool)) {
-    $kitsDirectory = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
-    $SignTool = Get-ChildItem $kitsDirectory -Recurse -Filter signtool.exe |
-        Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
-        Sort-Object FullName -Descending |
-        Select-Object -ExpandProperty FullName -First 1
-}
-if ([string]::IsNullOrWhiteSpace($SignTool) -or
-    -not (Test-Path -LiteralPath $SignTool -PathType Leaf)) {
-    throw 'Windows SDK x64 signtool.exe was not found'
-}
-
-foreach ($target in @($appPath, $explorerCommandPath)) {
-    & $SignTool sign /fd SHA256 /f $resolvedPfx /p $SigningPassword $target
-    if ($LASTEXITCODE -ne 0) {
-        throw "Authenticode signing failed for $target with exit code $LASTEXITCODE"
-    }
-    $signature = Get-AuthenticodeSignature -LiteralPath $target
-    if ($null -eq $signature.SignerCertificate -or
-        $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
-        throw "The signer for $target does not match the supplied PFX"
-    }
-}
-
 $resolvedOutput = [System.IO.Path]::GetFullPath($OutputDirectory)
 New-Item -ItemType Directory -Path $resolvedOutput -Force | Out-Null
 $scriptPath = Join-Path $PSScriptRoot 'XDecode.iss'
@@ -119,15 +85,8 @@ $setupPath = Join-Path $resolvedOutput 'XDecode-Setup-x64.exe'
 if (-not (Test-Path -LiteralPath $setupPath -PathType Leaf)) {
     throw 'Inno Setup did not produce XDecode-Setup-x64.exe'
 }
-& $SignTool sign /fd SHA256 /f $resolvedPfx /p $SigningPassword $setupPath
-if ($LASTEXITCODE -ne 0) {
-    throw "setup.exe signing failed with exit code $LASTEXITCODE"
-}
-
-$setupSignature = Get-AuthenticodeSignature -LiteralPath $setupPath
-if ($null -eq $setupSignature.SignerCertificate -or
-    $setupSignature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
-    throw 'The generated setup.exe signer does not match the supplied PFX'
+if ((Get-AuthenticodeSignature -LiteralPath $setupPath).Status -ne 'NotSigned') {
+    throw 'The generated setup.exe must be unsigned'
 }
 
 Write-Output $setupPath

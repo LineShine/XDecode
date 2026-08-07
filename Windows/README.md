@@ -65,21 +65,16 @@ Windows App SDK 固定在 1.7 的最新维护版，避免把 1.8+ 元包中的 W
 - `.xlog`、`.mx`、`.logan`、`.zip` 的“打开方式”。
 - 只转发普通文件的原生 Explorer Command。
 
-在仓库外准备签名 `.pfx`。PFX 和密码只通过 CI Secret
-`WINDOWS_SIGNING_PFX_BASE64`、`WINDOWS_SIGNING_PASSWORD` 注入，不得提交到仓库。
-安装 Inno Setup 7.0.2 后执行：
+Windows 发布物当前不做 Authenticode 签名。安装 Inno Setup 7.0.2 后执行：
 
 ```powershell
-$env:WINDOWS_SIGNING_PASSWORD = "仅在当前终端设置的 PFX 密码"
-
 & .\Windows\installer\build-setup.ps1 `
   -PublishDirectory $publish `
-  -SigningPfxPath "C:\XDecode-Cert\XDecode-Signing.pfx" `
   -Version "1.0.0"
 ```
 
 输出位于 `Windows\installer\Output\XDecode-Setup-x64.exe`。构建脚本会校验 x64
-架构和版本，先签名主程序与 Explorer Command，再编译并签名安装器。
+架构、版本以及主程序、Explorer Command 和安装器均未签名。
 
 普通安装直接双击 `XDecode-Setup-x64.exe`。无交互安装无需管理员终端：
 
@@ -91,7 +86,12 @@ $env:WINDOWS_SIGNING_PASSWORD = "仅在当前终端设置的 PFX 密码"
 `%LOCALAPPDATA%\LineShine\XDecode`，再移除旧包。新版覆盖安装保留该目录；明确卸载时删除
 应用设置，但不删除用户日志、ZIP 或已经发布的输出。
 
-CI 还会验证 Inno Setup 官方 release attestation 和发布者签名，安装生成的 setup，真实
+检测到已有 Inno 版本时，交互安装提供“卸载现有版本后重新安装（推荐）”和“不卸载，
+直接覆盖安装”两种方式。推荐方式会先备份本地设置与 DPAPI 密钥，关闭旧进程并卸载程序，
+随后恢复数据再安装；静默升级默认使用推荐方式。控制面板中的明确卸载仍会删除应用设置。
+
+CI 还会验证 Inno Setup 工具自身的官方 release attestation 和发布者签名，确认 XDecode
+产物保持未签名，安装生成的 setup，真实
 启动已安装应用并等待主窗口和 10 秒存活，然后检查系统集成与卸载清理，最终上传
 `XDecode-Windows-x64-setup` Artifact。
 
@@ -101,7 +101,7 @@ CI 还会验证 Inno Setup 官方 release attestation 和发布者签名，安�
 - `src/XDecode.Application`：规则、DPAPI 设置、历史、队列、监听和更新检查。
 - `src/XDecode.Windows`：WinUI 3、托盘、通知、开机启动和单实例激活。
 - `src/XDecode.ExplorerCommand`：只转发普通文件的原生 `IExplorerCommand`。
-- `installer`：当前用户安装、旧 MSIX 数据迁移、签名和 `setup.exe` 构建。
+- `installer`：当前用户安装、旧 MSIX 数据迁移、重装数据保护和 `setup.exe` 构建。
 - `packaging`：旧 MSIX 的清单与资源，仅保留为历史兼容参考，不参与发布构建。
 
 ZIP 的 Windows 路径校验额外拒绝 UNC、盘符、ADS、设备名、非法字符、末尾空格或点、

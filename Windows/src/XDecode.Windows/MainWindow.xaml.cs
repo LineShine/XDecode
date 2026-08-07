@@ -22,6 +22,7 @@ public sealed partial class MainWindow : Window
         _appWindow.Resize(new Windows.Graphics.SizeInt32(1080, 720));
         _appWindow.Closing += OnClosing;
         Navigation.SelectedItem = Navigation.MenuItems[0];
+        RefreshAutomationStatus();
         NavigateTo("decode", activate: false);
         StartupTrace.Write("MainWindow: complete");
     }
@@ -33,6 +34,13 @@ public sealed partial class MainWindow : Window
     }
 
     public void Hide() => _appWindow.Hide();
+
+    public void RefreshAutomationStatus()
+    {
+        var enabled = App.CurrentApp.Services.Settings.Current.AutomaticEnabled;
+        AutomationStatusDot.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        AutomationStatusText.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+    }
 
     public void NavigateTo(string tag) => NavigateTo(tag, activate: true);
 
@@ -56,9 +64,12 @@ public sealed partial class MainWindow : Window
     public async void ExitApplication()
     {
         _isExiting = true;
-        await App.CurrentApp.Services.DisposeAsync();
-        Close();
-        App.CurrentApp.Exit();
+        try { await App.CurrentApp.ShutdownAsync(); }
+        finally
+        {
+            Close();
+            App.CurrentApp.Exit();
+        }
     }
 
     private void OnClosing(AppWindow sender, AppWindowClosingEventArgs arguments)
@@ -73,4 +84,7 @@ public sealed partial class MainWindow : Window
     {
         if (arguments.SelectedItemContainer?.Tag is string tag) NavigateTo(tag, activate: false);
     }
+
+    private async void AddLogs_Click(object sender, RoutedEventArgs e) =>
+        await App.CurrentApp.Services.PickAndEnqueueAsync(this);
 }

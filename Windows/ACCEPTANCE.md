@@ -4,8 +4,8 @@
 
 ## 安装与生命周期
 
-- `XDecode-Setup-x64.exe`、`XDecode.Windows.exe` 和 Explorer Command 具有同一
-  Authenticode 签名。
+- `XDecode-Setup-x64.exe`、`XDecode.Windows.exe` 和 Explorer Command 的
+  Authenticode 状态均为 `NotSigned`。
 - 普通用户无需管理员权限、CER 或 Windows App SDK/.NET 预安装即可完成安装和启动。
 - 安装位置为 `%LOCALAPPDATA%\Programs\XDecode`，系统“已安装的应用”中只有一个标准卸载项。
 - CI 安装后真实启动应用，主窗口在 30 秒内出现且进程继续存活至少 10 秒。
@@ -47,6 +47,8 @@
 - 从旧 MSIX 版本升级时，设置、DPAPI 密钥、监控目录和历史迁移到新的本地数据目录，
   旧 MSIX 随后被移除。
 - 使用新版 `setup.exe` 覆盖较低版本时，设置、DPAPI 密钥、监控目录和历史保留。
+- 重复运行同版本 `setup.exe` 时显示“卸载后重新安装/直接覆盖”选择；推荐重装方式完成后，
+  设置、DPAPI 密钥、监控目录和历史仍然保留。
 - `setup.exe` 必须拒绝用旧版本覆盖已安装的新版本。
 - 卸载后程序目录、本地应用数据、开机启动、COM 注册、文件关联和托盘入口消失。
 - 卸载不删除用户日志、ZIP 和已发布 `.log`/输出目录。

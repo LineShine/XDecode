@@ -20,6 +20,7 @@ public sealed partial class MonitorPage : Page
         if (_loading) return;
         App.CurrentApp.Services.Settings.Current.AutomaticEnabled = AutomaticToggle.IsOn;
         await App.CurrentApp.Services.ReloadMonitoringAsync();
+        App.CurrentApp.MainWindow.RefreshAutomationStatus();
     }
 
     private async void AddFolder_Click(object sender, RoutedEventArgs e)
@@ -33,12 +34,17 @@ public sealed partial class MonitorPage : Page
 
     private async void RemoveFolder_Click(object sender, RoutedEventArgs e)
     {
-        if (FolderList.SelectedItem is not string path) return;
+        if (sender is not Button { Tag: string path }) return;
         await App.CurrentApp.Services.Settings.RemoveMonitoredFolderAsync(path);
         await App.CurrentApp.Services.ReloadMonitoringAsync();
         RefreshFolders();
     }
 
-    private void RefreshFolders() =>
-        FolderList.ItemsSource = App.CurrentApp.Services.Settings.MonitoredFolders.ToArray();
+    private void RefreshFolders()
+    {
+        var folders = App.CurrentApp.Services.Settings.MonitoredFolders.ToArray();
+        FolderList.ItemsSource = folders;
+        FolderList.Visibility = folders.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+        EmptyFolders.Visibility = folders.Length > 0 ? Visibility.Collapsed : Visibility.Visible;
+    }
 }

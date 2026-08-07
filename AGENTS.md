@@ -42,14 +42,15 @@ msbuild Windows/XDecode.Windows.sln /restore /m /p:Configuration=Release /p:Plat
 dotnet publish Windows/src/XDecode.Windows/XDecode.Windows.csproj -c Release -r win-x64 `
   --self-contained true -p:Platform=x64 -p:WindowsPackageType=None
 powershell -File .\Windows\installer\build-setup.ps1 `
-  -PublishDirectory <publish-directory> -SigningPfxPath <private.pfx>
+  -PublishDirectory <publish-directory>
 ```
 
 Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XDecodeApp` 或测试时，至少运行 `swift test`。涉及工程配置、Entitlements、Info.plist、Finder 扩展或打包时，再运行 `xcodebuild` 并说明签名环境。
 
 不要依赖 Xcode Scheme 运行 Package 测试；当前测试目标由 `Package.swift` 管理。
 Windows 原生、WinUI、自包含发布和 `setup.exe` 必须在 Windows CI 或 Windows 开发机验证；
-PFX 不得入库，正式交付物必须是签名的 `XDecode-Setup-x64.exe`。
+Windows 发布物按当前发布策略保持无 Authenticode 签名，CI 必须验证主程序、Explorer Command
+和 `XDecode-Setup-x64.exe` 均为 `NotSigned`。
 
 ## 模块地图
 

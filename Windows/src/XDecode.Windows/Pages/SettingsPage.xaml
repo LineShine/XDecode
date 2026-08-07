@@ -2,115 +2,316 @@
     x:Class="XDecode.WindowsApp.Pages.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid Padding="32" RowSpacing="16">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <TextBlock Text="设置" Style="{StaticResource TitleTextBlockStyle}" />
-        <TabView Grid.Row="1">
-            <TabViewItem Header="常规">
-                <StackPanel Padding="4,20" Spacing="16" MaxWidth="720"
-                            HorizontalAlignment="Left">
-                    <ToggleSwitch x:Name="NotificationToggle" Header="通知"
-                                  Toggled="NotificationToggle_Toggled" />
-                    <ToggleSwitch x:Name="StartupToggle" Header="开机自启动"
-                                  Toggled="StartupToggle_Toggled" />
-                    <StackPanel Orientation="Horizontal" Spacing="12">
-                        <TextBlock Text="版本 1.0.0" VerticalAlignment="Center" />
-                        <Button Content="检查更新" Click="CheckUpdate_Click" />
-                    </StackPanel>
-                    <InfoBar x:Name="UpdateInfo" IsOpen="False" />
-                </StackPanel>
-            </TabViewItem>
-            <TabViewItem Header="Xlog">
-                <Grid Padding="4,20" ColumnSpacing="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="280" />
-                        <ColumnDefinition Width="420" />
-                    </Grid.ColumnDefinitions>
-                    <Grid RowSpacing="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <ListView x:Name="XlogProfileList"
-                                  SelectionChanged="XlogProfileList_SelectionChanged">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" />
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-                            <Button Content="新增" Click="AddXlog_Click" />
-                            <Button Content="删除" Click="DeleteXlog_Click" />
+    <Grid>
+        <ScrollViewer HorizontalScrollMode="Disabled"
+                      HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Padding="28" Spacing="22" MaxWidth="860" HorizontalAlignment="Left">
+                <TextBlock Text="设置" Style="{StaticResource PageTitleTextStyle}" />
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="自动化" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Border Style="{StaticResource GroupedSectionStyle}">
+                        <StackPanel>
+                            <Grid Padding="16,12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="自动解密" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="AutomaticToggle"
+                                              Grid.Column="1"
+                                              OffContent="" OnContent=""
+                                              Toggled="AutomaticToggle_Toggled" />
+                            </Grid>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <TextBlock x:Name="EmptyFolders"
+                                       Text="尚未添加监控文件夹"
+                                       Padding="16,14"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <ListView x:Name="FolderList"
+                                      SelectionMode="None"
+                                      ItemContainerStyle="{StaticResource StretchListViewItemStyle}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="16,10" ColumnSpacing="12">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="36" />
+                                            </Grid.ColumnDefinitions>
+                                            <SymbolIcon Symbol="Folder" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock Grid.Column="1" Text="{Binding}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center" />
+                                            <Button Grid.Column="2" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding}"
+                                                    Click="RemoveFolder_Click"
+                                                    ToolTipService.ToolTip="移除监控文件夹">
+                                                <SymbolIcon Symbol="Delete" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Button Margin="12,10" HorizontalAlignment="Left" Click="AddFolder_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon Symbol="Add" />
+                                    <TextBlock Text="添加监控文件夹" />
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
-                    </Grid>
-                    <StackPanel Grid.Column="1" Spacing="12">
-                        <TextBox x:Name="XlogName" Header="名称" />
-                        <TextBox x:Name="XlogPattern" Header="文件名规则" />
-                        <PasswordBox x:Name="XlogKey" Header="secp256k1 私钥（64 位 Hex）"
-                                     PasswordRevealMode="Peek" />
-                        <Button Content="保存" HorizontalAlignment="Left" Click="SaveXlog_Click" />
-                        <InfoBar x:Name="XlogInfo" IsOpen="False" />
-                    </StackPanel>
-                </Grid>
-            </TabViewItem>
-            <TabViewItem Header="Logan">
-                <Grid Padding="4,20" ColumnSpacing="20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="280" />
-                        <ColumnDefinition Width="420" />
-                    </Grid.ColumnDefinitions>
-                    <Grid RowSpacing="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <ListView x:Name="LoganProfileList"
-                                  SelectionChanged="LoganProfileList_SelectionChanged">
-                            <ListView.ItemTemplate>
-                                <DataTemplate>
-                                    <TextBlock Text="{Binding Name}" />
-                                </DataTemplate>
-                            </ListView.ItemTemplate>
-                        </ListView>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
-                            <Button Content="新增" Click="AddLogan_Click" />
-                            <Button Content="删除" Click="DeleteLogan_Click" />
-                        </StackPanel>
-                    </Grid>
-                    <StackPanel Grid.Column="1" Spacing="12">
-                        <TextBox x:Name="LoganName" Header="名称" />
-                        <TextBox x:Name="LoganPattern" Header="文件名规则" />
-                        <PasswordBox x:Name="LoganKey" Header="AES Key" PasswordRevealMode="Peek" />
-                        <PasswordBox x:Name="LoganIV" Header="AES IV" PasswordRevealMode="Peek" />
-                        <Button Content="保存" HorizontalAlignment="Left" Click="SaveLogan_Click" />
-                        <InfoBar x:Name="LoganInfo" IsOpen="False" />
-                    </StackPanel>
-                </Grid>
-            </TabViewItem>
-            <TabViewItem Header="文件规则">
-                <StackPanel Padding="4,20" Spacing="14" MaxWidth="720"
-                            HorizontalAlignment="Left">
-                    <TextBox x:Name="MxPattern" Header="MX 文件名规则" />
-                    <TextBlock Text="ZIP 文件名规则" Style="{StaticResource SubtitleTextBlockStyle}" />
-                    <ListView x:Name="ZipRuleList" SelectionMode="Single" Height="180">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Pattern}" />
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                    <TextBox x:Name="ZipPattern" Header="规则" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Content="新增" Click="AddZipRule_Click" />
-                        <Button Content="保存" Click="SaveRules_Click" />
-                        <Button Content="删除" Click="DeleteZipRule_Click" />
-                    </StackPanel>
+                    </Border>
                 </StackPanel>
-            </TabViewItem>
-        </TabView>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="常规" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Border Style="{StaticResource GroupedSectionStyle}">
+                        <StackPanel>
+                            <Grid Padding="16,12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="开机自启动" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="StartupToggle" Grid.Column="1"
+                                              OffContent="" OnContent=""
+                                              Toggled="StartupToggle_Toggled" />
+                            </Grid>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Grid Padding="16,12">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <TextBlock Text="通知" VerticalAlignment="Center" />
+                                <ToggleSwitch x:Name="NotificationToggle" Grid.Column="1"
+                                              OffContent="" OnContent=""
+                                              Toggled="NotificationToggle_Toggled" />
+                            </Grid>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Grid Padding="16,12" ColumnSpacing="16">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <StackPanel Spacing="2">
+                                    <TextBlock Text="检查更新" />
+                                    <TextBlock x:Name="VersionText" Text="当前版本 1.0.0" Style="{StaticResource CaptionTextStyle}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Click="CheckUpdate_Click">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <SymbolIcon Symbol="Refresh" />
+                                        <TextBlock Text="检查更新" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                            <InfoBar x:Name="UpdateInfo" IsOpen="False" Margin="12,0,12,12" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="ZIP 批量解密" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Border Style="{StaticResource GroupedSectionStyle}">
+                        <StackPanel>
+                            <ListView x:Name="ZipRuleList"
+                                      SelectionMode="None"
+                                      ItemContainerStyle="{StaticResource StretchListViewItemStyle}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="16,10" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="130" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="36" />
+                                                <ColumnDefinition Width="36" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="文件名正则" VerticalAlignment="Center" />
+                                            <TextBox Grid.Column="1"
+                                                     Text="{Binding Pattern, Mode=OneWay}"
+                                                     Tag="{Binding Id}"
+                                                     LostFocus="ZipPattern_LostFocus" />
+                                            <Button Grid.Column="2" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding Id}"
+                                                    Click="ResetZipRule_Click"
+                                                    ToolTipService.ToolTip="恢复默认规则">
+                                                <SymbolIcon Symbol="Refresh" />
+                                            </Button>
+                                            <Button Grid.Column="3" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding Id}"
+                                                    IsEnabled="{Binding CanDelete}"
+                                                    Click="DeleteZipRule_Click"
+                                                    ToolTipService.ToolTip="删除规则">
+                                                <SymbolIcon Symbol="Delete" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Button Margin="12,10" HorizontalAlignment="Left" Click="AddZipRule_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon Symbol="Add" />
+                                    <TextBlock Text="新增正则规则" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="任一规则匹配即可处理。成功、失败或部分成功都会生成目录；成功日志为 .log，失败日志保留原文件名和内容，源 ZIP 始终保留。"
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="MX 日志" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Border Style="{StaticResource GroupedSectionStyle}">
+                        <Grid Padding="16,10" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="36" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="文件名匹配" VerticalAlignment="Center" />
+                            <TextBox x:Name="MxPattern" Grid.Column="1" LostFocus="MxPattern_LostFocus" />
+                            <Button Grid.Column="2" Width="32" Height="32" Padding="0"
+                                    Click="ResetMxPattern_Click"
+                                    ToolTipService.ToolTip="恢复默认规则">
+                                <SymbolIcon Symbol="Refresh" />
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="默认匹配 *.mx，支持 * 和 ? 通配符。" Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Xlog secp256k1 私钥" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Border Style="{StaticResource GroupedSectionStyle}">
+                        <StackPanel>
+                            <TextBlock x:Name="EmptyXlogProfiles"
+                                       Text="尚未配置私钥方案"
+                                       Padding="16,14"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <ListView x:Name="XlogProfileList"
+                                      SelectionMode="None"
+                                      ItemContainerStyle="{StaticResource StretchListViewItemStyle}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="16,10" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="36" />
+                                                <ColumnDefinition Width="36" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock Text="{Binding FilePattern}" Style="{StaticResource CaptionTextStyle}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding}"
+                                                    Click="EditXlog_Click"
+                                                    ToolTipService.ToolTip="编辑">
+                                                <SymbolIcon Symbol="Edit" />
+                                            </Button>
+                                            <Button Grid.Column="2" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding}"
+                                                    Click="DeleteXlog_Click"
+                                                    ToolTipService.ToolTip="删除">
+                                                <SymbolIcon Symbol="Delete" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Button Margin="12,10" HorizontalAlignment="Left" Click="AddXlog_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon Symbol="Add" />
+                                    <TextBlock Text="新增方案" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="私钥保存在本机 App 设置中。文件名支持 * 和 ? 通配符，多个匹配方案会自动尝试。"
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Logan Key / IV" Style="{StaticResource SectionTitleTextStyle}" />
+                    <Border Style="{StaticResource GroupedSectionStyle}">
+                        <StackPanel>
+                            <TextBlock x:Name="EmptyLoganProfiles"
+                                       Text="尚未配置密钥方案"
+                                       Padding="16,14"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <ListView x:Name="LoganProfileList"
+                                      SelectionMode="None"
+                                      ItemContainerStyle="{StaticResource StretchListViewItemStyle}">
+                                <ListView.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Padding="16,10" ColumnSpacing="8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="36" />
+                                                <ColumnDefinition Width="36" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Spacing="2">
+                                                <TextBlock Text="{Binding Name}" />
+                                                <TextBlock Text="{Binding FilePattern}" Style="{StaticResource CaptionTextStyle}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding}"
+                                                    Click="EditLogan_Click"
+                                                    ToolTipService.ToolTip="编辑">
+                                                <SymbolIcon Symbol="Edit" />
+                                            </Button>
+                                            <Button Grid.Column="2" Width="32" Height="32" Padding="0"
+                                                    Tag="{Binding}"
+                                                    Click="DeleteLogan_Click"
+                                                    ToolTipService.ToolTip="删除">
+                                                <SymbolIcon Symbol="Delete" />
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListView.ItemTemplate>
+                            </ListView>
+                            <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />
+                            <Button Margin="12,10" HorizontalAlignment="Left" Click="AddLogan_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <SymbolIcon Symbol="Add" />
+                                    <TextBlock Text="新增方案" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="AES Key 和 IV 均至少填写 16 字节，超过部分不参与解密；完整原文保存在本机 App 设置中。文件名支持 *、? 和 yyyy-MM-dd。"
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+
+        <ContentDialog x:Name="XlogDialog"
+                       Title="Xlog 私钥方案"
+                       PrimaryButtonText="保存"
+                       CloseButtonText="取消"
+                       DefaultButton="Primary"
+                       PrimaryButtonClick="XlogDialog_PrimaryButtonClick">
+            <StackPanel Spacing="12" MinWidth="440">
+                <TextBox x:Name="XlogName" Header="方案名称" />
+                <TextBox x:Name="XlogPattern" Header="匹配文件名" />
+                <PasswordBox x:Name="XlogKey"
+                             Header="64 位 Hex 私钥"
+                             PasswordRevealMode="Peek" />
+                <TextBlock x:Name="XlogSecretHint"
+                           Text="编辑已有方案时，私钥留空将保持不变。"
+                           Style="{StaticResource CaptionTextStyle}" />
+                <InfoBar x:Name="XlogInfo" IsOpen="False" Severity="Error" />
+            </StackPanel>
+        </ContentDialog>
+
+        <ContentDialog x:Name="LoganDialog"
+                       Title="Logan 密钥方案"
+                       PrimaryButtonText="保存"
+                       CloseButtonText="取消"
+                       DefaultButton="Primary"
+                       PrimaryButtonClick="LoganDialog_PrimaryButtonClick">
+            <StackPanel Spacing="12" MinWidth="440">
+                <TextBox x:Name="LoganName" Header="方案名称" />
+                <TextBox x:Name="LoganPattern" Header="匹配文件名" />
+                <PasswordBox x:Name="LoganKey" Header="AES Key" PasswordRevealMode="Peek" />
+                <PasswordBox x:Name="LoganIV" Header="AES IV" PasswordRevealMode="Peek" />
+                <TextBlock x:Name="LoganSecretHint"
+                           Text="编辑已有方案时，Key 和 IV 均留空将保持不变。"
+                           Style="{StaticResource CaptionTextStyle}" />
+                <InfoBar x:Name="LoganInfo" IsOpen="False" Severity="Error" />
+            </StackPanel>
+        </ContentDialog>
     </Grid>
 </Page>

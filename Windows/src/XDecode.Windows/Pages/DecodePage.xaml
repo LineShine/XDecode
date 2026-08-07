@@ -2,50 +2,106 @@
     x:Class="XDecode.WindowsApp.Pages.DecodePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:XDecode.WindowsApp">
-    <Page.Resources>
-        <local:DecodeStateConverter x:Key="DecodeStateConverter" />
-    </Page.Resources>
-    <Grid Padding="32" RowSpacing="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="220" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-        <TextBlock Text="解密日志" Style="{StaticResource TitleTextBlockStyle}" />
-        <Border Grid.Row="1" x:Name="DropTarget" AllowDrop="True"
-                DragOver="DropTarget_DragOver" Drop="DropTarget_Drop"
-                BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
-                BorderThickness="2" CornerRadius="6" Padding="24">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
-                <FontIcon Glyph="&#xE8B7;" FontSize="40" />
-                <TextBlock Text="拖入 Xlog、MX、Logan 或 ZIP" FontSize="18" />
-                <Button Click="SelectFiles_Click">
+    xmlns:controls="using:XDecode.WindowsApp.Controls"
+    Loaded="Page_Loaded"
+    Unloaded="Page_Unloaded">
+    <ScrollViewer HorizontalScrollMode="Disabled"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Padding="28" Spacing="22">
+            <Grid ColumnSpacing="20">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock Text="解密日志" Style="{StaticResource PageTitleTextStyle}" />
+                    <TextBlock Text="支持 Xlog、MX、Logan 和符合规则的 ZIP"
+                               Style="{StaticResource PageSubtitleTextStyle}" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Click="SelectFiles_Click">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="OpenFile" />
                         <TextBlock Text="选择文件" />
                     </StackPanel>
                 </Button>
-            </StackPanel>
-        </Border>
-        <TextBlock Grid.Row="2" Text="最近处理" Style="{StaticResource SubtitleTextBlockStyle}" />
-        <ListView Grid.Row="3" x:Name="RecentList" SelectionMode="None">
-            <ListView.ItemTemplate>
-                <DataTemplate>
-                    <Grid Padding="8" ColumnSpacing="12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding State, Converter={StaticResource DecodeStateConverter}}" />
-                        <TextBlock Grid.Column="1" Text="{Binding Request.SourcePath}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="2" Content="定位" Tag="{Binding}" Click="Reveal_Click" />
-                    </Grid>
-                </DataTemplate>
-            </ListView.ItemTemplate>
-        </ListView>
-    </Grid>
+            </Grid>
+
+            <Border x:Name="DropTarget"
+                    Height="180"
+                    AllowDrop="True"
+                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                    BorderBrush="{ThemeResource ControlStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    DragOver="DropTarget_DragOver"
+                    Drop="DropTarget_Drop">
+                <StackPanel HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="10">
+                    <FontIcon Glyph="&#xE896;"
+                              FontSize="28"
+                              Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="拖入日志或 ZIP 即可解密"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="可同时处理多个文件"
+                               Style="{StaticResource PageSubtitleTextStyle}"
+                               HorizontalAlignment="Center" />
+                    <Button Content="浏览文件" Click="SelectFiles_Click" />
+                </StackPanel>
+            </Border>
+
+            <Grid>
+                <TextBlock Text="最近5个处理"
+                           Style="{StaticResource SectionTitleTextStyle}"
+                           VerticalAlignment="Center" />
+                <HyperlinkButton Content="查看全部"
+                                 HorizontalAlignment="Right"
+                                 Click="ViewAll_Click" />
+            </Grid>
+
+            <Grid MinHeight="180">
+                <StackPanel x:Name="EmptyRecent"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="9">
+                    <SymbolIcon Symbol="Clock"
+                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="暂无任务"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center" />
+                    <TextBlock Text="解密结果会显示在这里"
+                               Style="{StaticResource PageSubtitleTextStyle}"
+                               HorizontalAlignment="Center" />
+                </StackPanel>
+                <ListView x:Name="RecentList"
+                          SelectionMode="None"
+                          IsItemClickEnabled="False"
+                          ItemContainerStyle="{StaticResource StretchListViewItemStyle}">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <controls:ResultRow Result="{Binding}" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+
+            <Grid Padding="0,8,0,0">
+                <TextBlock Text="单个日志解密成功后删除源文件；ZIP 批量始终保留源 ZIP"
+                           Style="{StaticResource CaptionTextStyle}" />
+                <StackPanel Orientation="Horizontal"
+                            Spacing="7"
+                            HorizontalAlignment="Right">
+                    <Ellipse Width="7" Height="7"
+                             Fill="{ThemeResource TextFillColorSecondaryBrush}"
+                             VerticalAlignment="Center" />
+                    <TextBlock Text="等待任务"
+                               Style="{StaticResource CaptionTextStyle}" />
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
 </Page>

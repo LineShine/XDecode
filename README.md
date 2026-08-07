@@ -165,9 +165,9 @@ AppModel -> AppSettings 文件名分类 -> DecodeRequest
 
 ### Windows
 
-Windows 10 22H2 / Windows 11 x64 的构建、测试、vcpkg 固定版本和测试证书注入方式见
+Windows 10 22H2 / Windows 11 x64 的构建、测试和 vcpkg 固定版本见
 [`Windows/README.md`](Windows/README.md)。Windows CI 执行三组 `dotnet test`、
-Release x64 自包含发布，并生成签名的 `XDecode-Setup-x64.exe`。正式交付使用
+Release x64 自包含发布，并生成无 Authenticode 签名的 `XDecode-Setup-x64.exe`。正式交付使用
 `setup.exe`；CI 会执行当前用户安装、真实启动与进程存活、系统集成和卸载冒烟测试。
 
 ### macOS
