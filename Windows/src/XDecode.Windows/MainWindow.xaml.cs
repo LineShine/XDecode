@@ -12,14 +12,18 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        StartupTrace.Write("MainWindow: InitializeComponent begin");
         InitializeComponent();
+        StartupTrace.Write("MainWindow: InitializeComponent complete");
         var hwnd = WindowNative.GetWindowHandle(this);
         var id = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
         _appWindow = AppWindow.GetFromWindowId(id);
+        StartupTrace.Write("MainWindow: AppWindow acquired");
         _appWindow.Resize(new Windows.Graphics.SizeInt32(1080, 720));
         _appWindow.Closing += OnClosing;
         Navigation.SelectedItem = Navigation.MenuItems[0];
         NavigateTo("decode", activate: false);
+        StartupTrace.Write("MainWindow: complete");
     }
 
     public void ShowAndActivate()

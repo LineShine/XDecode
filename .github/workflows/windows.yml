@@ -222,6 +222,8 @@ jobs:
           $logPath = "${{ runner.temp }}\xdecode-setup.log"
           $installDirectory = Join-Path $env:LOCALAPPDATA 'Programs\XDecode'
           $appPath = Join-Path $installDirectory 'XDecode.Windows.exe'
+          $tracePath = "${{ runner.temp }}\xdecode-startup.log"
+          $launchTime = Get-Date
           $uninstallKey =
             'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LineShine.XDecode.Setup_is1'
           $process = $null
@@ -261,6 +263,7 @@ jobs:
               throw "setup.exe did not register uninstall, file, Explorer, and startup integration"
             }
 
+            $env:XDECODE_STARTUP_TRACE = $tracePath
             $process = Start-Process -FilePath $appPath -PassThru
             $deadline = [DateTime]::UtcNow.AddSeconds(30)
             do {
@@ -283,6 +286,17 @@ jobs:
             "Validated XDecode setup: $sizeMiB MiB"
           }
           finally {
+            if (Test-Path -LiteralPath $tracePath) {
+              "XDecode startup trace:"
+              Get-Content -LiteralPath $tracePath
+            }
+            Get-WinEvent -FilterHashtable @{
+              LogName = 'Application'
+              StartTime = $launchTime
+            } -ErrorAction SilentlyContinue |
+              Where-Object Message -Like '*XDecode.Windows.exe*' |
+              Select-Object TimeCreated, Id, ProviderName, Message |
+              Format-List
             if ($null -ne $process -and -not $process.HasExited) {
               Stop-Process -Id $process.Id -Force
               $process.WaitForExit()

@@ -26,9 +26,12 @@ public sealed class AppServices : IAsyncDisposable
 
     public async Task InitializeAsync(MainWindow window)
     {
+        StartupTrace.Write("Services: loading history");
         foreach (var result in await Orchestrator.LoadHistoryAsync())
             RecentResults.Add(result);
+        StartupTrace.Write("Services: initializing notifications");
         Notifications.Initialize();
+        StartupTrace.Write("Services: creating tray icon");
         Tray = new TrayIconService();
         Tray.OpenRequested += window.ShowAndActivate;
         Tray.SelectFilesRequested += () => _ = PickAndEnqueueAsync(window);
@@ -36,8 +39,11 @@ public sealed class AppServices : IAsyncDisposable
         Tray.CheckUpdateRequested += () => _ = CheckForUpdatesAsync();
         Tray.ExitRequested += window.ExitApplication;
         Tray.Initialize();
+        StartupTrace.Write("Services: tray icon initialized");
         Tray.UpdateRecent(RecentResults.Take(3));
+        StartupTrace.Write("Services: starting folder monitoring");
         await Orchestrator.StartMonitoringAsync();
+        StartupTrace.Write("Services: folder monitoring started");
     }
 
     public Task EnqueueAsync(IEnumerable<string> paths, DecodeOrigin origin) =>

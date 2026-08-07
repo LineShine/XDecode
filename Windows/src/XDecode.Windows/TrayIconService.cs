@@ -17,6 +17,7 @@ public sealed class TrayIconService : IDisposable
 
     public TrayIconService()
     {
+        StartupTrace.Write("Tray: constructor begin");
         _icon = new System.Windows.Forms.NotifyIcon
         {
             Icon = System.Drawing.SystemIcons.Application,
@@ -29,13 +30,16 @@ public sealed class TrayIconService : IDisposable
                 OpenRequested?.Invoke();
         };
         RebuildMenu();
+        StartupTrace.Write("Tray: constructor complete");
     }
 
     public void Initialize()
     {
         if (_initialized) return;
+        StartupTrace.Write("Tray: setting visible");
         _icon.Visible = true;
         _initialized = true;
+        StartupTrace.Write("Tray: visible");
     }
 
     public void UpdateRecent(IEnumerable<DecodeResult> results)
