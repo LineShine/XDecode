@@ -18,6 +18,7 @@ public sealed partial class MainWindow : Window
         var hwnd = WindowNative.GetWindowHandle(this);
         var id = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(hwnd);
         _appWindow = AppWindow.GetFromWindowId(id);
+        _appWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "XDecode.ico"));
         StartupTrace.Write("MainWindow: AppWindow acquired");
         _appWindow.Resize(new Windows.Graphics.SizeInt32(1080, 720));
         _appWindow.Closing += OnClosing;

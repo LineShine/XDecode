@@ -18,7 +18,7 @@ jobs:
         shell: pwsh
     env:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}\Windows\vcpkg_installed
-      XDECODE_VERSION: 1.0.0
+      XDECODE_VERSION: 1.0.1
       INNO_SETUP_VERSION: 7.0.2
       HAS_INNO_SETUP_LICENSE: ${{ secrets.INNO_SETUP_LICENSE_KEY != '' }}
 
@@ -103,6 +103,9 @@ jobs:
           Copy-Item -LiteralPath $explorerCommand.FullName -Destination $publishDirectory
           if (-not (Test-Path (Join-Path $publishDirectory 'zlib1.dll'))) {
             throw "The publish directory does not contain zlib1.dll"
+          }
+          if (-not (Test-Path (Join-Path $publishDirectory 'Assets\XDecode.ico'))) {
+            throw "The publish directory does not contain the XDecode app icon"
           }
           "XDECODE_PUBLISH_DIRECTORY=$publishDirectory" |
             Out-File $env:GITHUB_ENV -Append -Encoding utf8

@@ -85,7 +85,7 @@
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel Spacing="2">
                                     <TextBlock Text="检查更新" />
-                                    <TextBlock x:Name="VersionText" Text="当前版本 1.0.0" Style="{StaticResource CaptionTextStyle}" />
+                                    <TextBlock x:Name="VersionText" Text="当前版本 1.0.1" Style="{StaticResource CaptionTextStyle}" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Click="CheckUpdate_Click">
                                     <StackPanel Orientation="Horizontal" Spacing="8">

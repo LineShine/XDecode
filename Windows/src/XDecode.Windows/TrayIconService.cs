@@ -61,7 +61,7 @@ public sealed class TrayIconService : IDisposable
             Id = 1,
             Flags = NifMessage | NifIcon | NifTip,
             CallbackMessage = TrayMessage,
-            Icon = LoadIcon(0, (nint)32512),
+            Icon = LoadIcon(GetModuleHandle(null), (nint)32512),
             Tip = "XDecode",
             Info = "",
             InfoTitle = ""
@@ -186,6 +186,8 @@ public sealed class TrayIconService : IDisposable
     private static extern bool ShellNotifyIcon(uint message, ref NotifyIconData data);
     [DllImport("user32.dll", EntryPoint = "LoadIconW")]
     private static extern nint LoadIcon(nint instance, nint iconName);
+    [DllImport("kernel32.dll", EntryPoint = "GetModuleHandleW", CharSet = CharSet.Unicode)]
+    private static extern nint GetModuleHandle(string? moduleName);
     [DllImport("comctl32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetWindowSubclass(

@@ -2,7 +2,7 @@
   #error SourcePublishDir must point to the unpackaged self-contained publish directory
 #endif
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 #ifndef OutputDir
   #define OutputDir SourcePath + "Output"
@@ -38,6 +38,7 @@ RestartApplications=no
 RestartIfNeededByRun=no
 SetupLogging=yes
 ChangesAssociations=yes
+SetupIconFile={#SourcePublishDir}\Assets\XDecode.ico
 VersionInfoVersion={#AppVersion}.0
 VersionInfoCompany=LineShine
 VersionInfoDescription=XDecode Windows 安装程序

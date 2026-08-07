@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$PublishDirectory,
-    [string]$Version = '1.0.0',
+    [string]$Version = '1.0.1',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'Output'),
     [string]$InnoCompiler
 )

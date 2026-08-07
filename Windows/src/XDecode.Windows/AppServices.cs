@@ -86,7 +86,7 @@ public sealed class AppServices : IAsyncDisposable
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+            var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.1";
             var result = await new UpdateChecker(client).CheckAsync(version);
             if (result.IsUpdateAvailable)
             {

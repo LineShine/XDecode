@@ -14,7 +14,7 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
-    <XDecodeVersion Condition="'$(XDecodeVersion)' == ''">1.0.0</XDecodeVersion>
+    <XDecodeVersion Condition="'$(XDecodeVersion)' == ''">1.0.1</XDecodeVersion>
     <Version>$(XDecodeVersion)</Version>
     <AssemblyVersion>$(XDecodeVersion).0</AssemblyVersion>
     <FileVersion>$(XDecodeVersion).0</FileVersion>

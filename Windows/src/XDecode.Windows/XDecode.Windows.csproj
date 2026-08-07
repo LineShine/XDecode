@@ -9,10 +9,15 @@
     <PublishTrimmed>false</PublishTrimmed>
     <PublishSingleFile>false</PublishSingleFile>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\XDecode.ico</ApplicationIcon>
     <RootNamespace>XDecode.WindowsApp</RootNamespace>
     <NoWarn>$(NoWarn);SYSLIB1054</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="Assets\XDecode.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
     <ProjectReference Include="..\XDecode.Application\XDecode.Application.csproj" />
     <ProjectReference Include="..\XDecode.Core\XDecode.Core.csproj" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
