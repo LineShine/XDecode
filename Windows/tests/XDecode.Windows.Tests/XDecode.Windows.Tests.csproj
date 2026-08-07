@@ -3,6 +3,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <SelfContained>true</SelfContained>
+    <EnableMsixTooling>true</EnableMsixTooling>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\XDecode.Windows\XDecode.Windows.csproj" />
