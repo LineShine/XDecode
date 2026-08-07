@@ -282,6 +282,18 @@ jobs:
               throw "XDecode exited during the launch survival check with code $($process.ExitCode)"
             }
 
+            $upgradeLogPath = "${{ runner.temp }}\xdecode-upgrade.log"
+            $upgrade = Start-Process -FilePath $setup.FullName -Wait -PassThru -ArgumentList @(
+              '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$upgradeLogPath")
+            if ($upgrade.ExitCode -ne 0) {
+              if (Test-Path $upgradeLogPath) { Get-Content $upgradeLogPath }
+              throw "setup.exe running-app upgrade failed with exit code $($upgrade.ExitCode)"
+            }
+            $process.Refresh()
+            if (-not $process.HasExited) {
+              throw "setup.exe did not close the running XDecode process during upgrade"
+            }
+
             $sizeMiB = [Math]::Round($setup.Length / 1MB, 2)
             "Validated XDecode setup: $sizeMiB MiB"
           }
