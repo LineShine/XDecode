@@ -213,16 +213,26 @@ function RemovePreviousInstallDirectory(): Boolean;
 var
   Attempt: Integer;
   InstallDirectory: String;
+  StableChecks: Integer;
 begin
   InstallDirectory := ExpandConstant('{app}');
-  for Attempt := 1 to 50 do
+  StableChecks := 0;
+  for Attempt := 1 to 100 do
   begin
     if not DirExists(InstallDirectory) then
     begin
-      Result := True;
-      Exit;
+      StableChecks := StableChecks + 1;
+      if StableChecks >= 25 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end
+    else
+    begin
+      StableChecks := 0;
+      DelTree(InstallDirectory, True, True, True);
     end;
-    DelTree(InstallDirectory, True, True, True);
     Sleep(200);
   end;
   Result := not DirExists(InstallDirectory);
