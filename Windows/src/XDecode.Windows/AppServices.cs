@@ -32,7 +32,7 @@ public sealed class AppServices : IAsyncDisposable
         StartupTrace.Write("Services: initializing notifications");
         Notifications.Initialize();
         StartupTrace.Write("Services: creating tray icon");
-        Tray = new TrayIconService();
+        Tray = new TrayIconService(window);
         Tray.OpenRequested += window.ShowAndActivate;
         Tray.SelectFilesRequested += () => _ = PickAndEnqueueAsync(window);
         Tray.SettingsRequested += () => window.NavigateTo("settings");
