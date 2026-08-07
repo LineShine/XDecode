@@ -209,6 +209,25 @@ begin
     ResultCode) and (ResultCode <= 7);
 end;
 
+function RemovePreviousInstallDirectory(): Boolean;
+var
+  Attempt: Integer;
+  InstallDirectory: String;
+begin
+  InstallDirectory := ExpandConstant('{app}');
+  for Attempt := 1 to 50 do
+  begin
+    if not DirExists(InstallDirectory) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    DelTree(InstallDirectory, True, True, True);
+    Sleep(200);
+  end;
+  Result := not DirExists(InstallDirectory);
+end;
+
 function UninstallExistingVersion(): String;
 var
   ResultCode: Integer;
@@ -251,6 +270,12 @@ begin
         ResultCode)) or (ResultCode <> 0) then
   begin
     Result := '现有 XDecode 卸载失败，请关闭应用后重试。';
+    Exit;
+  end;
+
+  if not RemovePreviousInstallDirectory() then
+  begin
+    Result := '无法清理现有 XDecode 程序目录，请关闭文件管理器或安全软件后重试。';
     Exit;
   end;
 

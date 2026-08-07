@@ -190,6 +190,8 @@ jobs:
 
           $logPath = "${{ runner.temp }}\xdecode-setup.log"
           $installDirectory = Join-Path $env:LOCALAPPDATA 'Programs\XDecode'
+          $stateDirectory = Join-Path $env:LOCALAPPDATA 'LineShine\XDecode'
+          $reinstallBackupDirectory = Join-Path $env:LOCALAPPDATA 'LineShine\XDecode-Reinstall-Backup'
           $appPath = Join-Path $installDirectory 'XDecode.Windows.exe'
           $tracePath = "${{ runner.temp }}\xdecode-startup.log"
           $launchTime = Get-Date
@@ -250,6 +252,10 @@ jobs:
               throw "XDecode exited during the launch survival check with code $($process.ExitCode)"
             }
 
+            New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+            $preservationMarker = Join-Path $stateDirectory 'installer-preservation-smoke.txt'
+            Set-Content -LiteralPath $preservationMarker -Value 'preserve during reinstall' -NoNewline
+
             $secondary = Start-Process -FilePath $appPath -PassThru
             if (-not $secondary.WaitForExit(15 * 1000)) {
               throw "A second XDecode launch did not forward activation and exit"
@@ -273,6 +279,9 @@ jobs:
             $process.Refresh()
             if (-not $process.HasExited) {
               throw "setup.exe did not close the running XDecode process during upgrade"
+            }
+            if (-not (Test-Path -LiteralPath $preservationMarker -PathType Leaf)) {
+              throw "setup.exe did not preserve XDecode user data during reinstall"
             }
 
             $sizeMiB = [Math]::Round($setup.Length / 1MB, 2)
@@ -304,11 +313,21 @@ jobs:
             }
           }
 
-          if ((Test-Path -LiteralPath $installDirectory) -or
-              (Test-Path $uninstallKey) -or
-              (Test-Path 'HKCU:\Software\Classes\XDecode.Log') -or
-              (Test-Path -LiteralPath 'HKCU:\Software\Classes\*\shell\XDecodeDecrypt')) {
-            throw "XDecode uninstall left application files or registry integration behind"
+          $residuals = @()
+          if (Test-Path -LiteralPath $installDirectory) { $residuals += $installDirectory }
+          if (Test-Path -LiteralPath $stateDirectory) { $residuals += $stateDirectory }
+          if (Test-Path -LiteralPath $reinstallBackupDirectory) {
+            $residuals += $reinstallBackupDirectory
+          }
+          if (Test-Path $uninstallKey) { $residuals += $uninstallKey }
+          if (Test-Path 'HKCU:\Software\Classes\XDecode.Log') {
+            $residuals += 'HKCU:\Software\Classes\XDecode.Log'
+          }
+          if (Test-Path -LiteralPath 'HKCU:\Software\Classes\*\shell\XDecodeDecrypt') {
+            $residuals += 'HKCU:\Software\Classes\*\shell\XDecodeDecrypt'
+          }
+          if ($residuals.Count -gt 0) {
+            throw "XDecode uninstall left residuals: $($residuals -join ', ')"
           }
 
       - name: Upload setup.exe
