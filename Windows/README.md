@@ -43,7 +43,7 @@ dotnet publish Windows\src\XDecode.Windows\XDecode.Windows.csproj -c Release `
   -p:Platform=x64 -p:WindowsPackageType=None `
   -p:WindowsAppSDKSelfContained=true `
   -p:VcpkgInstalledDir="$PWD\Windows\vcpkg_installed"
-$explorerCommand = Get-ChildItem Windows\src\XDecode.ExplorerCommand -Recurse `
+$explorerCommand = Get-ChildItem Windows -Recurse `
   -Filter XDecode.ExplorerCommand.dll | Where-Object FullName -Match '\\x64\\Release\\' `
   | Select-Object -First 1
 Copy-Item $explorerCommand.FullName $publish

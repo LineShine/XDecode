@@ -96,7 +96,7 @@ jobs:
             -p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-          $explorerCommand = Get-ChildItem Windows\src\XDecode.ExplorerCommand `
+          $explorerCommand = Get-ChildItem Windows `
             -Recurse -Filter XDecode.ExplorerCommand.dll |
             Where-Object FullName -Match '\\x64\\Release\\' |
             Select-Object -First 1
