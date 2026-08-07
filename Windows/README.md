@@ -5,7 +5,7 @@ Windows 版本位于独立解决方案 `XDecode.Windows.sln`，目标为 Windows
 
 ## 环境
 
-- Windows 11，安装支持 .NET 10 / Windows App SDK 2.3.1 的 Visual Studio，
+- Windows 11，安装支持 .NET 10 / Windows App SDK 1.7 的 Visual Studio，
   并选择“使用 C++ 的桌面开发”和“Windows 应用开发”工作负载。
 - .NET 10 SDK 和 Windows 10 SDK 10.0.26100。
 - vcpkg 固定到 `56bb2411609227288b70117ead2c47585ba07713`。
@@ -50,6 +50,8 @@ Copy-Item $explorerCommand.FullName $publish
 ```
 
 发布目录同时携带 .NET 10 和 Windows App SDK 运行时，目标机器无需预装这些运行时。
+Windows App SDK 固定在 1.7 的最新维护版，避免把 1.8+ 元包中的 WinML/DirectML
+运行库带入不使用机器学习能力的 XDecode 安装包。
 这比复用系统 WebView2 的 Tauri 应用更大，但避免了缺少运行时导致无法启动；Inno 直接对
 发布目录做 solid LZMA2 压缩，不再先生成已压缩 MSIX 后二次封装。
 

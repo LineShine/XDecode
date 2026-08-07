@@ -319,7 +319,7 @@ jobs:
           }
 
       - name: Upload setup.exe
-        if: ${{ env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
+        if: ${{ always() && env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: XDecode-Windows-x64-setup
