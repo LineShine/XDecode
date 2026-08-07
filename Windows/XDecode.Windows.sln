@@ -10,8 +10,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Windows", "src\XDec
 EndProject
 Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "XDecode.ExplorerCommand", "src\XDecode.ExplorerCommand\XDecode.ExplorerCommand.vcxproj", "{8AC1195F-C9BA-47A0-A189-E23DE11469C7}"
 EndProject
-Project("{C716E427-0E01-4B52-AF0E-55C92D253474}") = "XDecode.Package", "packaging\XDecode.Package.wapproj", "{7C65B9E8-0E6D-4503-866C-37673562E8C1}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Core.Tests", "tests\XDecode.Core.Tests\XDecode.Core.Tests.csproj", "{0417D445-75EF-4FE4-AF81-7A0702A07131}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XDecode.Application.Tests", "tests\XDecode.Application.Tests\XDecode.Application.Tests.csproj", "{B8BFD55B-784A-4B76-9FC5-6B8C7513A5EE}"
@@ -40,10 +38,6 @@ Global
 		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Debug|x64.Build.0 = Debug|x64
 		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Release|x64.ActiveCfg = Release|x64
 		{8AC1195F-C9BA-47A0-A189-E23DE11469C7}.Release|x64.Build.0 = Release|x64
-		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Debug|x64.ActiveCfg = Debug|x64
-		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Debug|x64.Build.0 = Debug|x64
-		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Release|x64.ActiveCfg = Release|x64
-		{7C65B9E8-0E6D-4503-866C-37673562E8C1}.Release|x64.Build.0 = Release|x64
 		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Debug|x64.ActiveCfg = Debug|x64
 		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Debug|x64.Build.0 = Debug|x64
 		{0417D445-75EF-4FE4-AF81-7A0702A07131}.Release|x64.ActiveCfg = Release|x64

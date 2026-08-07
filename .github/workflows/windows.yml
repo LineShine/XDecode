@@ -80,6 +80,34 @@ jobs:
           /p:AppxPackageSigningEnabled=false
           /p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
 
+      - name: Publish self-contained unpackaged app
+        run: |
+          $publishDirectory = Join-Path "${{ runner.temp }}" 'xdecode-publish'
+          dotnet publish Windows\src\XDecode.Windows\XDecode.Windows.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -o $publishDirectory `
+            -p:Platform=x64 `
+            -p:WindowsPackageType=None `
+            -p:WindowsAppSDKSelfContained=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
+          if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+          $explorerCommand = Get-ChildItem Windows\src\XDecode.ExplorerCommand `
+            -Recurse -Filter XDecode.ExplorerCommand.dll |
+            Where-Object FullName -Match '\\x64\\Release\\' |
+            Select-Object -First 1
+          if (-not $explorerCommand) { throw "XDecode.ExplorerCommand.dll was not built" }
+          Copy-Item -LiteralPath $explorerCommand.FullName -Destination $publishDirectory
+          if (-not (Test-Path (Join-Path $publishDirectory 'zlib1.dll'))) {
+            throw "The publish directory does not contain zlib1.dll"
+          }
+          "XDECODE_PUBLISH_DIRECTORY=$publishDirectory" |
+            Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Decode signing certificate
         if: ${{ env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
         env:
@@ -93,60 +121,6 @@ jobs:
             "${{ runner.temp }}\xdecode-signing.pfx",
             $env:WINDOWS_SIGNING_PASSWORD,
             [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
-          [IO.File]::WriteAllBytes(
-            "${{ runner.temp }}\xdecode-signing.cer",
-            $certificate.Export([Security.Cryptography.X509Certificates.X509ContentType]::Cert))
-
-      - name: Build signed self-contained MSIX
-        if: ${{ env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
-        env:
-          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
-        run: >
-          msbuild Windows\packaging\XDecode.Package.wapproj
-          /restore
-          /m
-          /p:Configuration=Release
-          /p:Platform=x64
-          /p:AppxPackageSigningEnabled=true
-          /p:PackageCertificateKeyFile=${{ runner.temp }}\xdecode-signing.pfx
-          /p:PackageCertificatePassword=$env:WINDOWS_SIGNING_PASSWORD
-          /p:UapAppxPackageBuildMode=SideloadOnly
-          /p:AppxBundle=Never
-          /p:XDecodeVersion=$env:XDECODE_VERSION
-          /p:VcpkgInstalledDir=$env:VCPKG_INSTALLED_DIR
-
-      - name: Verify signed MSIX
-        if: ${{ env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
-        env:
-          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
-        run: |
-          $msix = Get-ChildItem Windows\packaging\AppPackages -Recurse -Filter *.msix |
-            Select-Object -First 1
-          if (-not $msix) { throw "MSIX was not produced" }
-          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" `
-            -Recurse -Filter signtool.exe |
-            Where-Object FullName -Match '\\x64\\' |
-            Select-Object -First 1
-          $password = ConvertTo-SecureString $env:WINDOWS_SIGNING_PASSWORD -AsPlainText -Force
-          $trusted = $null
-          $trustedRoot = $null
-          try {
-            $trusted = Import-PfxCertificate -FilePath "${{ runner.temp }}\xdecode-signing.pfx" `
-              -CertStoreLocation Cert:\CurrentUser\TrustedPeople -Password $password
-            $trustedRoot = Import-Certificate -FilePath "${{ runner.temp }}\xdecode-signing.cer" `
-              -CertStoreLocation Cert:\LocalMachine\Root
-            & $signtool.FullName verify /pa /v $msix.FullName
-            if ($LASTEXITCODE -ne 0) { throw "MSIX signature verification failed" }
-            Add-AppxPackage -Path $msix.FullName
-            $package = Get-AppxPackage -Name LineShine.XDecode
-            if (-not $package) { throw "Installed package was not found" }
-          }
-          finally {
-            $package = Get-AppxPackage -Name LineShine.XDecode
-            if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
-            if ($trustedRoot) { Remove-Item -LiteralPath $trustedRoot.PSPath -Force }
-            if ($trusted) { Remove-Item -LiteralPath $trusted.PSPath -Force }
-          }
 
       - name: Install verified Inno Setup
         if: ${{ env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
@@ -219,12 +193,8 @@ jobs:
         env:
           WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
         run: |
-          $msix = Get-ChildItem Windows\packaging\AppPackages -Recurse -Filter *.msix |
-            Select-Object -First 1
-          if (-not $msix) { throw "MSIX was not produced" }
           & .\Windows\installer\build-setup.ps1 `
-            -MsixPath $msix.FullName `
-            -CertificatePath "${{ runner.temp }}\xdecode-signing.cer" `
+            -PublishDirectory $env:XDECODE_PUBLISH_DIRECTORY `
             -SigningPfxPath "${{ runner.temp }}\xdecode-signing.pfx" `
             -Version $env:XDECODE_VERSION `
             -OutputDirectory "${{ github.workspace }}\Windows\installer\Output" `
@@ -232,63 +202,106 @@ jobs:
 
       - name: Install setup.exe smoke test
         if: ${{ env.HAS_WINDOWS_SIGNING_CERTIFICATE == 'true' }}
+        env:
+          WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}
         run: |
           $setup = Get-ChildItem Windows\installer\Output -Filter *.exe |
             Select-Object -First 1
           if (-not $setup) { throw "setup.exe was not produced" }
           $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new(
-            "${{ runner.temp }}\xdecode-signing.cer")
-          @('Cert:\CurrentUser\TrustedPeople', 'Cert:\LocalMachine\TrustedPeople') |
-            ForEach-Object {
-              Get-ChildItem $_ |
-                Where-Object Thumbprint -EQ $certificate.Thumbprint |
-                Remove-Item -Force
-            }
-          $existing = Get-AppxPackage -Name LineShine.XDecode
-          if ($existing) { Remove-AppxPackage -Package $existing.PackageFullName }
+            "${{ runner.temp }}\xdecode-signing.pfx",
+            $env:WINDOWS_SIGNING_PASSWORD,
+            [Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet)
 
           $signature = Get-AuthenticodeSignature -LiteralPath $setup.FullName
           if ($null -eq $signature.SignerCertificate -or
               $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
-            throw "setup.exe signer does not match the MSIX signer"
+            throw "setup.exe signer does not match the configured signer"
           }
 
           $logPath = "${{ runner.temp }}\xdecode-setup.log"
+          $installDirectory = Join-Path $env:LOCALAPPDATA 'Programs\XDecode'
+          $appPath = Join-Path $installDirectory 'XDecode.Windows.exe'
+          $uninstallKey =
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LineShine.XDecode.Setup_is1'
+          $process = $null
           try {
-            $process = Start-Process -FilePath $setup.FullName -Wait -PassThru -ArgumentList @(
-              '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
-              '/ACCEPTTESTCERT=1', "/LOG=$logPath")
-            if ($process.ExitCode -ne 0) {
+            $installer = Start-Process -FilePath $setup.FullName -Wait -PassThru -ArgumentList @(
+              '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/LOG=$logPath")
+            if ($installer.ExitCode -ne 0) {
               if (Test-Path $logPath) { Get-Content $logPath }
-              throw "setup.exe failed with exit code $($process.ExitCode)"
+              throw "setup.exe failed with exit code $($installer.ExitCode)"
             }
+            if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) {
+              throw "setup.exe did not install XDecode.Windows.exe"
+            }
+
             $expectedVersion = [version]"$($env:XDECODE_VERSION).0"
-            $package = Get-AppxPackage -Name LineShine.XDecode |
-              Sort-Object Version -Descending |
-              Select-Object -First 1
-            if (-not $package) {
-              if (Test-Path $logPath) { Get-Content $logPath }
-              throw "setup.exe did not install the XDecode package"
+            $actualVersion = [version](Get-Item -LiteralPath $appPath).VersionInfo.FileVersion
+            if ($actualVersion -ne $expectedVersion) {
+              throw "setup.exe installed version $actualVersion, expected $expectedVersion"
             }
-            if ([version]$package.Version -ne $expectedVersion) {
-              if (Test-Path $logPath) { Get-Content $logPath }
-              throw "setup.exe installed version $($package.Version), expected $expectedVersion"
+
+            foreach ($signedFile in @(
+              $appPath,
+              (Join-Path $installDirectory 'XDecode.ExplorerCommand.dll'))) {
+              $installedSignature = Get-AuthenticodeSignature -LiteralPath $signedFile
+              if ($null -eq $installedSignature.SignerCertificate -or
+                  $installedSignature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
+                throw "$signedFile is not signed by the configured certificate"
+              }
             }
-            $remainingCertificate = Get-ChildItem Cert:\LocalMachine\TrustedPeople |
-              Where-Object Thumbprint -EQ $certificate.Thumbprint
-            if ($remainingCertificate) {
-              throw "setup.exe left its temporary signing certificate trusted"
+
+            if (-not (Test-Path $uninstallKey) -or
+                -not (Test-Path 'HKCU:\Software\Classes\XDecode.Log') -or
+                -not (Test-Path -LiteralPath 'HKCU:\Software\Classes\*\shell\XDecodeDecrypt') -or
+                -not (Get-ItemProperty `
+                  'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' `
+                  -Name XDecode -ErrorAction SilentlyContinue)) {
+              throw "setup.exe did not register uninstall, file, Explorer, and startup integration"
             }
+
+            $process = Start-Process -FilePath $appPath -PassThru
+            $deadline = [DateTime]::UtcNow.AddSeconds(30)
+            do {
+              Start-Sleep -Milliseconds 500
+              $process.Refresh()
+              if ($process.HasExited) {
+                throw "XDecode exited during launch with code $($process.ExitCode)"
+              }
+            } while ($process.MainWindowHandle -eq 0 -and [DateTime]::UtcNow -lt $deadline)
+            if ($process.MainWindowHandle -eq 0) {
+              throw "XDecode did not create its main window within 30 seconds"
+            }
+            Start-Sleep -Seconds 10
+            $process.Refresh()
+            if ($process.HasExited) {
+              throw "XDecode exited during the launch survival check with code $($process.ExitCode)"
+            }
+
+            $sizeMiB = [Math]::Round($setup.Length / 1MB, 2)
+            "Validated XDecode setup: $sizeMiB MiB"
           }
           finally {
-            $package = Get-AppxPackage -Name LineShine.XDecode
-            if ($package) { Remove-AppxPackage -Package $package.PackageFullName }
-            @('Cert:\CurrentUser\TrustedPeople', 'Cert:\LocalMachine\TrustedPeople') |
-              ForEach-Object {
-                Get-ChildItem $_ |
-                  Where-Object Thumbprint -EQ $certificate.Thumbprint |
-                  Remove-Item -Force
+            if ($null -ne $process -and -not $process.HasExited) {
+              Stop-Process -Id $process.Id -Force
+              $process.WaitForExit()
+            }
+            if (Test-Path $uninstallKey) {
+              $uninstaller = (Get-ItemProperty $uninstallKey).UninstallString.Trim('"')
+              $uninstall = Start-Process -FilePath $uninstaller -Wait -PassThru -ArgumentList @(
+                '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART')
+              if ($uninstall.ExitCode -ne 0) {
+                throw "XDecode uninstall failed with code $($uninstall.ExitCode)"
               }
+            }
+          }
+
+          if ((Test-Path -LiteralPath $installDirectory) -or
+              (Test-Path $uninstallKey) -or
+              (Test-Path 'HKCU:\Software\Classes\XDecode.Log') -or
+              (Test-Path -LiteralPath 'HKCU:\Software\Classes\*\shell\XDecodeDecrypt')) {
+            throw "XDecode uninstall left application files or registry integration behind"
           }
 
       - name: Upload setup.exe

@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.ApplicationModel;
 using XDecode.Application;
 
 namespace XDecode.WindowsApp.Pages;
@@ -27,9 +26,9 @@ public sealed partial class SettingsPage : Page
 
     private async Task LoadStartupStateAsync()
     {
-        var state = await App.CurrentApp.Services.Startup.GetStateAsync();
+        var enabled = await App.CurrentApp.Services.Startup.GetStateAsync();
         _loading = true;
-        StartupToggle.IsOn = state == StartupTaskState.Enabled;
+        StartupToggle.IsOn = enabled;
         _loading = false;
     }
 

@@ -129,7 +129,7 @@ XDecode/
 ├── Tests/XDecodeAppTests/        # 匹配、书签、监听、通知和抑制回环测试
 ├── script/                       # Python 协议参考与手工诊断脚本
 ├── XDecode.xcodeproj/            # macOS App 与 Finder Extension 工程
-└── Windows/                      # .NET/WinUI、Explorer Command、MSIX 和 Windows 测试
+└── Windows/                      # .NET/WinUI、Explorer Command、Inno 安装器和 Windows 测试
 ```
 
 核心调用链如下：
@@ -167,8 +167,8 @@ AppModel -> AppSettings 文件名分类 -> DecodeRequest
 
 Windows 10 22H2 / Windows 11 x64 的构建、测试、vcpkg 固定版本和测试证书注入方式见
 [`Windows/README.md`](Windows/README.md)。Windows CI 执行三组 `dotnet test`、
-Release x64 构建、MSIX 打包，并生成签名的 `XDecode-Setup-x64.exe`。正式交付使用
-`setup.exe`；CI 会从证书未预信任状态执行安装、证书清理和卸载冒烟测试。
+Release x64 自包含发布，并生成签名的 `XDecode-Setup-x64.exe`。正式交付使用
+`setup.exe`；CI 会执行当前用户安装、真实启动与进程存活、系统集成和卸载冒烟测试。
 
 ### macOS
 

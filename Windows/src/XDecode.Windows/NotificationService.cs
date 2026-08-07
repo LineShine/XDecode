@@ -11,8 +11,16 @@ public sealed class NotificationService : IDisposable
     public void Initialize()
     {
         if (_registered) return;
-        AppNotificationManager.Default.Register();
-        _registered = true;
+        if (!AppNotificationManager.IsSupported()) return;
+        try
+        {
+            AppNotificationManager.Default.Register();
+            _registered = true;
+        }
+        catch (Exception)
+        {
+            _registered = false;
+        }
     }
 
     public void Show(DecodeResult result)
@@ -31,20 +39,26 @@ public sealed class NotificationService : IDisposable
             .AddText(result.Message);
         if (result.OutputPath is not null)
             builder.AddArgument("output", result.OutputPath);
-        AppNotificationManager.Default.Show(builder.BuildNotification());
+        TryShow(builder.BuildNotification());
     }
 
     public void ShowMessage(string title, string message)
     {
         if (!_registered) return;
-        AppNotificationManager.Default.Show(
-            new AppNotificationBuilder().AddText(title).AddText(message).BuildNotification());
+        TryShow(new AppNotificationBuilder().AddText(title).AddText(message).BuildNotification());
+    }
+
+    private static void TryShow(AppNotification notification)
+    {
+        try { AppNotificationManager.Default.Show(notification); }
+        catch (Exception) { }
     }
 
     public void Dispose()
     {
         if (!_registered) return;
-        AppNotificationManager.Default.Unregister();
+        try { AppNotificationManager.Default.Unregister(); }
+        catch (Exception) { }
         _registered = false;
     }
 }

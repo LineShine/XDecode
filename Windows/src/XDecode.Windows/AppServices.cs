@@ -29,7 +29,7 @@ public sealed class AppServices : IAsyncDisposable
         foreach (var result in await Orchestrator.LoadHistoryAsync())
             RecentResults.Add(result);
         Notifications.Initialize();
-        Tray = new TrayIconService(window);
+        Tray = new TrayIconService();
         Tray.OpenRequested += window.ShowAndActivate;
         Tray.SelectFilesRequested += () => _ = PickAndEnqueueAsync(window);
         Tray.SettingsRequested += () => window.NavigateTo("settings");

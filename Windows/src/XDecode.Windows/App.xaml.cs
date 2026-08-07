@@ -27,7 +27,10 @@ public partial class App : Microsoft.UI.Xaml.Application
             return;
         }
 
-        var localState = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+        var localState = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LineShine",
+            "XDecode");
         _services = new AppServices(localState);
         _window = new MainWindow();
         main.Activated += OnActivated;
