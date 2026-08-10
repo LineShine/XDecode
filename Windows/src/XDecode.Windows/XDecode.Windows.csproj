@@ -23,4 +23,9 @@
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>XDecode.Windows.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>
