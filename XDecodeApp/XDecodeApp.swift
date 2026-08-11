@@ -6,9 +6,14 @@ import XDecodeCore
 @main
 struct XDecodeApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.openWindow) private var openWindow
     @StateObject private var model = AppModel.shared
 
     var body: some Scene {
+        let _ = MainWindowVisibilityCoordinator.shared.setOpenWindowAction {
+            openWindow(id: "main")
+        }
+
         Window("XDecode", id: "main") {
             RootView()
                 .environmentObject(model)
@@ -156,17 +161,40 @@ final class MainWindowVisibilityCoordinator {
 
     private var state: LaunchState = .pending
     private var window: NSWindow?
+    private var openWindowAction: (() -> Void)?
+    private var hasPendingExplicitPresentation = false
+    private var hasRequestedWindowScene = false
+    private let presentWindowAction: @MainActor (NSWindow) -> Void
 
-    private init() {}
+    private init() {
+        presentWindowAction = { window in
+            NSApp.setActivationPolicy(.accessory)
+            window.alphaValue = 1
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    init(presentWindowAction: @escaping @MainActor (NSWindow) -> Void) {
+        self.presentWindowAction = presentWindowAction
+    }
+
+    func setOpenWindowAction(_ action: @escaping () -> Void) {
+        openWindowAction = action
+        requestWindowSceneIfNeeded()
+    }
 
     func attach(_ window: NSWindow) {
         self.window = window
         window.isReleasedWhenClosed = false
         applyState()
+        fulfillPendingExplicitPresentation()
     }
 
     func suppress() {
         state = .suppressed
+        hasPendingExplicitPresentation = false
+        hasRequestedWindowScene = false
         applyState()
     }
 
@@ -177,11 +205,26 @@ final class MainWindowVisibilityCoordinator {
 
     func present() {
         state = .presented
-        guard let window else { return }
-        NSApp.setActivationPolicy(.accessory)
-        window.alphaValue = 1
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        hasPendingExplicitPresentation = true
+        hasRequestedWindowScene = false
+        requestWindowSceneIfNeeded()
+        applyState()
+        fulfillPendingExplicitPresentation()
+    }
+
+    private func requestWindowSceneIfNeeded() {
+        guard hasPendingExplicitPresentation,
+              !hasRequestedWindowScene,
+              let openWindowAction else { return }
+        hasRequestedWindowScene = true
+        openWindowAction()
+    }
+
+    private func fulfillPendingExplicitPresentation() {
+        guard hasPendingExplicitPresentation, let window else { return }
+        hasPendingExplicitPresentation = false
+        hasRequestedWindowScene = false
+        presentWindowAction(window)
     }
 
     private func applyState() {
