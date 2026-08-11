@@ -53,7 +53,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 - `FolderMonitor.swift` 直接消费 FSEvents 变更路径并只报告新增普通文件；仅在事件丢失时恢复性全量扫描，格式过滤由 `AppModel`/`AppSettings` 在稳定性检查前完成。
 - `AutomaticDecodeSuppressionStore.swift` 防止监控器重新处理 ZIP 自己发布的输出。
 - `HistoryStore.swift` 在内存中提供最近 30 条，磁盘最多保留 200 条且不超过 30 天；使用 1 秒防抖、最长 5 秒强制写入并在退出前刷新，不得写入密钥或日志正文。
-- `UpdateChecker.swift` 只读取 `LineShine/XDecode` 的 GitHub Releases 元数据并比较版本，不负责下载或安装。
+- `UpdateChecker.swift` 读取 XDecode 的 FlatStore 公开 macOS 版本元数据并比较版本；`UpdatePackageDownloader` 只在用户确认后下载 DMG 到 Downloads，校验声明大小和 UDIF 格式且不覆盖同名文件。系统打开安装界面后由 App 单独询问是否退出，不静默替换 App。
 
 ### `XDecodeFinder`
 
@@ -153,7 +153,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 - 主 App 与 Finder 扩展不使用 App Group，也不共享 `UserDefaults` 或文件容器。Finder 扩展只转发文件 URL，主 App 负责匹配和解密。
 - `~/Downloads` 使用 `com.apple.security.files.downloads.read-write` 和独立持久化开关，不进入 security-scoped bookmark 列表；不要把静态文件权限扩大到下载目录之外。
 - Downloads 以外的文件授权通过 app-scoped security bookmark 持久化。不要扩大沙盒权限来规避书签流程。
-- 出站网络权限只用于用户主动触发的 GitHub Releases 更新检查，不要在后台轮询或上传任何本地数据。
+- 出站网络权限只用于用户主动触发的 FlatStore 公开版本更新检查，以及用户确认后的 DMG 下载；不要在后台轮询、预下载或上传任何本地数据。
 - 二进制解析必须通过有边界检查的读取方法；对来自文件的长度做溢出和上限验证后才能分配内存。
 
 ## 测试策略

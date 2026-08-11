@@ -12,7 +12,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var icon: String {
         switch self {
-        case .decode: "xmark"
+        case .decode: "doc.zipper"
         case .history: "clock.arrow.circlepath"
         case .monitor: "folder.badge.gearshape"
         case .finder: "cursorarrow.click"
@@ -21,11 +21,17 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     }
 }
 
+enum UpdatePresentationAction: Equatable {
+    case dismiss
+    case download(UpdateRelease)
+    case quitApplication
+}
+
 struct UpdateCheckPresentation: Identifiable, Equatable {
     let id = UUID()
     let title: String
     let message: String
-    let releaseURL: URL?
+    let action: UpdatePresentationAction
 }
 
 struct ScopedFolderAccess {
@@ -200,6 +206,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var results: [DecodeResult] = []
     @Published private(set) var activeTaskCount = 0
     @Published private(set) var isCheckingForUpdates = false
+    @Published private(set) var isDownloadingUpdate = false
     @Published private(set) var updateCheckPresentation: UpdateCheckPresentation?
     @Published var bannerMessage: String?
 
@@ -211,6 +218,7 @@ final class AppModel: ObservableObject {
     private let notifications = NotificationManager()
     private let statusItem = StatusItemController()
     private let updateChecker = UpdateChecker()
+    private let updatePackageDownloader = UpdatePackageDownloader()
     private let folderAccess = FolderAccessStore()
     private var pendingFolderAccessRequests: [(URL, DecodeOrigin)] = []
     private var folderAuthorizationInProgress = false
@@ -407,7 +415,7 @@ final class AppModel: ObservableObject {
     }
 
     func checkForUpdates() {
-        guard !isCheckingForUpdates else { return }
+        guard !isCheckingForUpdates, !isDownloadingUpdate else { return }
         isCheckingForUpdates = true
         statusItem.setCheckingForUpdates(true)
         let currentVersion = currentVersion
@@ -421,20 +429,20 @@ final class AppModel: ObservableObject {
                     updateCheckPresentation = UpdateCheckPresentation(
                         title: "发现新版本",
                         message: "XDecode \(release.version) 已发布，当前版本为 \(currentVersion)。",
-                        releaseURL: release.pageURL
+                        action: .download(release)
                     )
                 case .upToDate:
                     updateCheckPresentation = UpdateCheckPresentation(
                         title: "已是最新版本",
                         message: "当前版本 \(currentVersion) 已是最新版本。",
-                        releaseURL: nil
+                        action: .dismiss
                     )
                 }
             } catch {
                 updateCheckPresentation = UpdateCheckPresentation(
                     title: "检查更新失败",
                     message: error.localizedDescription,
-                    releaseURL: nil
+                    action: .dismiss
                 )
             }
             isCheckingForUpdates = false
@@ -446,8 +454,40 @@ final class AppModel: ObservableObject {
         updateCheckPresentation = nil
     }
 
-    func openUpdatePage(_ url: URL) {
-        NSWorkspace.shared.open(url)
+    func downloadUpdate(_ release: UpdateRelease) {
+        guard !isDownloadingUpdate else { return }
+        updateCheckPresentation = nil
+        isDownloadingUpdate = true
+
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let packageURL = try await updatePackageDownloader.download(release)
+                guard NSWorkspace.shared.open(packageURL) else {
+                    throw UpdateDownloadError.cannotOpenInstaller
+                }
+                try await Task.sleep(for: .milliseconds(500))
+                showSettings()
+                updateCheckPresentation = UpdateCheckPresentation(
+                    title: "安装包已打开",
+                    message: "请退出 XDecode，然后在安装窗口中完成更新。",
+                    action: .quitApplication
+                )
+            } catch {
+                showSettings()
+                updateCheckPresentation = UpdateCheckPresentation(
+                    title: "下载更新失败",
+                    message: error.localizedDescription,
+                    action: .dismiss
+                )
+            }
+            isDownloadingUpdate = false
+        }
+    }
+
+    func quitApplicationForUpdate() {
+        updateCheckPresentation = nil
+        NSApplication.shared.terminate(nil)
     }
 
     func clearHistory() {

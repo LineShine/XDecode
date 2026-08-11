@@ -158,26 +158,38 @@ struct SettingsView: View {
             get: { model.updateCheckPresentation },
             set: { if $0 == nil { model.dismissUpdateCheckPresentation() } }
         )) { presentation in
-            if let releaseURL = presentation.releaseURL {
+            switch presentation.action {
+            case let .download(release):
                 return Alert(
                     title: Text(presentation.title),
                     message: Text(presentation.message),
                     primaryButton: .default(Text("前往下载")) {
-                        model.openUpdatePage(releaseURL)
-                        model.dismissUpdateCheckPresentation()
+                        model.downloadUpdate(release)
                     },
                     secondaryButton: .cancel(Text("稍后")) {
                         model.dismissUpdateCheckPresentation()
                     }
                 )
+            case .quitApplication:
+                return Alert(
+                    title: Text(presentation.title),
+                    message: Text(presentation.message),
+                    primaryButton: .destructive(Text("退出 App")) {
+                        model.quitApplicationForUpdate()
+                    },
+                    secondaryButton: .cancel(Text("稍后")) {
+                        model.dismissUpdateCheckPresentation()
+                    }
+                )
+            case .dismiss:
+                return Alert(
+                    title: Text(presentation.title),
+                    message: Text(presentation.message),
+                    dismissButton: .default(Text("好")) {
+                        model.dismissUpdateCheckPresentation()
+                    }
+                )
             }
-            return Alert(
-                title: Text(presentation.title),
-                message: Text(presentation.message),
-                dismissButton: .default(Text("好")) {
-                    model.dismissUpdateCheckPresentation()
-                }
-            )
         }
         .sheet(item: $editingXlogProfile) { profile in
             XlogProfileEditor(
@@ -225,11 +237,13 @@ struct SettingsView: View {
                 model.checkForUpdates()
             } label: {
                 Label(
-                    model.isCheckingForUpdates ? "正在检查…" : "检查更新",
+                    model.isDownloadingUpdate
+                        ? "正在下载…"
+                        : (model.isCheckingForUpdates ? "正在检查…" : "检查更新"),
                     systemImage: "arrow.clockwise"
                 )
             }
-            .disabled(model.isCheckingForUpdates)
+            .disabled(model.isCheckingForUpdates || model.isDownloadingUpdate)
         }
         .padding(.vertical, 2)
     }

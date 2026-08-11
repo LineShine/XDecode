@@ -19,7 +19,7 @@ XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlo
 - 多套 Xlog 私钥和 Logan Key/IV 方案，可按文件名匹配并依次尝试。
 - 无等待数量上限且最大并发为 2 的任务队列、多个递归监控文件夹，以及文件写入稳定后再自动处理。
 - 内存展示最近 30 条、磁盘保留最近 200 条且不超过 30 天的任务历史，以及 macOS 通知、菜单栏最近任务和 Finder 中定位输出。
-- 可从设置或菜单栏手动检查 GitHub Releases，新版本发布后可直接打开下载页面。
+- 可从设置或菜单栏通过 FlatStore 公开版本接口手动检查更新；确认下载后由 App 将 DMG 保存到 Downloads，校验通过后自动打开安装界面。
 - App Sandbox 和 Security-Scoped Bookmark。密钥保存在主 App 沙盒内的标准 `UserDefaults`，不会进入历史、通知或 Finder 扩展。
 - ZIP 路径穿越、重复路径、CRC、条目数量和解压大小校验。
 
@@ -63,7 +63,7 @@ XDecode 以菜单栏 App 运行，不在程序坞或 `Command-Tab` 中显示。�
 
 首次安装默认开启自动解密，并将 `~/Downloads` 设为监控目录，启动后直接监听新增日志，不再显示额外的删除确认弹窗。
 
-`~/Downloads` 使用 macOS 下载目录专用沙盒权限。第一次处理其他目录中的文件时，App Sandbox 会要求授权日志所在文件夹。“开机自启动”默认开启，可在设置中独立关闭；登录时 XDecode 只在后台启动菜单栏和自动监听，点击菜单栏中的“打开 XDecode”或“设置”会创建或恢复主窗口。开机自启动与“自动解密”互不影响。“常规”设置会显示当前版本并提供“检查更新”，该操作只请求 `LineShine/XDecode` 的 GitHub Releases 元数据，不会自动下载或安装。
+`~/Downloads` 使用 macOS 下载目录专用沙盒权限。第一次处理其他目录中的文件时，App Sandbox 会要求授权日志所在文件夹。“开机自启动”默认开启，可在设置中独立关闭；登录时 XDecode 只在后台启动菜单栏和自动监听，点击菜单栏中的“打开 XDecode”或“设置”会创建或恢复主窗口。开机自启动与“自动解密”互不影响。“常规”设置会显示当前版本并提供“检查更新”；检查只请求 XDecode 的 FlatStore 公开 macOS 版本元数据。只有用户确认“前往下载”后，App 才会下载 DMG 到 Downloads，以不覆盖方式命名，核对声明大小和 DMG 格式并调用系统打开。安装界面打开后，XDecode 会询问是否退出 App；用户仍需在系统界面中完成安装。
 
 ### 完整卸载与首次安装测试
 
@@ -115,6 +115,7 @@ ZIP 中全部成功、部分成功或全部日志解密失败时都会生成输�
 - ZIP 拒绝绝对路径、`..` 路径穿越、大小写不敏感的重复路径和 CRC 不匹配条目，并忽略 `__MACOSX`/AppleDouble 元数据。
 - 自动监听对 ZIP 输出登记文件路径和 inode，避免新生成的目录被监听器再次解密；登记默认保留 7 天。
 - 自动文件稳定性检查每隔 1 秒采样，连续稳定 2 次后处理，最长等待 60 秒，同一路径只保留一个检查；任务队列不限制等待数量，同时最多启动 2 个任务。
+- 更新安装包最大允许 1 GiB，实际文件大小必须与 FlatStore 元数据完全一致，并包含有效的 UDIF `koly` 尾部标记；校验失败时不会打开文件或退出 App。
 
 ## 工程结构
 
@@ -157,7 +158,7 @@ AppModel -> AppSettings 文件名分类 -> DecodeRequest
 - `XDecodeApp/AppModel.swift`：入口汇总、权限、任务、密钥解析和结果分发。
 - `XDecodeApp/AppSettings.swift`：标准 UserDefaults 设置、密钥、文件名规则和监控目录书签。
 - `XDecodeApp/FolderMonitor.swift`：基于 FSEvents 的递归新增文件检测。
-- `XDecodeApp/UpdateChecker.swift`：GitHub Releases 更新查询和语义版本比较。
+- `XDecodeApp/UpdateChecker.swift`：FlatStore 公开版本查询、语义版本比较、DMG 下载和大小/格式校验。
 - `XDecodeFinder/FinderSync.swift`：Finder 菜单和普通文件转发；不读取主 App 设置或密钥。
 
 ## 构建与测试

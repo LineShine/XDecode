@@ -15,7 +15,7 @@ final class FinderSyncExtension: FIFinderSync {
         let menu = NSMenu(title: "XDecode")
         let item = NSMenuItem(title: "使用 XDecode 解密", action: #selector(decodeSelectedFiles), keyEquivalent: "")
         item.image = finderMenuImage()
-            ?? NSImage(systemSymbolName: "xmark", accessibilityDescription: "XDecode")
+            ?? NSImage(systemSymbolName: "doc.zipper", accessibilityDescription: "XDecode")
         item.target = self
         menu.addItem(item)
         return menu
