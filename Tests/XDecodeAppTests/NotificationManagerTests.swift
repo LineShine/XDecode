@@ -99,6 +99,21 @@ struct NotificationManagerTests {
         #expect(!titles.contains { $0.contains("· 完成") || $0.contains("· 失败") })
     }
 
+    @MainActor
+    @Test("Menu bar visibility can be changed repeatedly")
+    func menuBarVisibility() {
+        let controller = StatusItemController()
+
+        #expect(!controller.isVisible)
+        controller.setVisible(true)
+        controller.setVisible(true)
+        #expect(controller.isVisible)
+
+        controller.setVisible(false)
+        controller.setVisible(false)
+        #expect(!controller.isVisible)
+    }
+
     @Test("Finder reveal uses output when available and retained source after failure")
     func finderRevealTargets() throws {
         let sourceURL = URL(fileURLWithPath: "/tmp/sample.xlog")

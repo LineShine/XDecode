@@ -78,12 +78,15 @@ struct XlogSettingsTests {
 
         let initial = AppSettings(defaults: defaults)
         #expect(initial.launchAtLoginEnabled)
+        #expect(initial.menuBarEnabled)
         #expect(initial.notificationsEnabled)
 
         initial.launchAtLoginEnabled = false
+        initial.menuBarEnabled = false
         initial.notificationsEnabled = false
         let restored = AppSettings(defaults: defaults)
         #expect(!restored.launchAtLoginEnabled)
+        #expect(!restored.menuBarEnabled)
         #expect(!restored.notificationsEnabled)
     }
 

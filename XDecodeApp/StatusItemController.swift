@@ -11,6 +11,18 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     var checkForUpdates: (() -> Void)?
     var openSettings: (() -> Void)?
 
+    var isVisible: Bool {
+        statusItem != nil
+    }
+
+    func setVisible(_ isVisible: Bool) {
+        if isVisible {
+            install()
+        } else {
+            uninstall()
+        }
+    }
+
     func install() {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -23,6 +35,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.delegate = self
         item.menu = menu
         statusItem = item
+    }
+
+    private func uninstall() {
+        guard let statusItem else { return }
+        NSStatusBar.system.removeStatusItem(statusItem)
+        self.statusItem = nil
     }
 
     func update(results: [DecodeResult]) {

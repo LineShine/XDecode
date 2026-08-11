@@ -138,8 +138,8 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 - `activeSourcePaths` 防止同一路径并发重复处理，任何新增入口都必须经过 `AppModel.enqueue`。
 - 解密任务队列不限制等待数量，最大并发为 2；新增入口不得绕过队列直接调用协调器。
 - 主界面使用单实例 SwiftUI `Window`，以保留 `NavigationSplitView` 的原生工具栏定位。主 App 通过 `LSMultipleInstancesProhibited` 禁止重复实例，Finder 入口必须显式复用运行实例；独立的 `XDecodeFinder` 扩展进程不计作主 App 实例。
-- 主 App 通过 `LSUIElement` 和 `.accessory` 固定为菜单栏 App，不得切换回 `.regular` 或出现在程序坞。菜单栏状态项必须常驻，不提供隐藏开关。窗口挂载时由 `MainWindowVisibilityCoordinator` 在首帧前控制透明度；通过“打开方式”冷启动时保持不可见，普通启动、重新打开 App 和菜单栏入口才显示主窗口。开机自启动只在后台启动菜单栏和自动监听，不主动创建主窗口；菜单栏“打开 XDecode”或“设置”必须能创建或恢复同一个 SwiftUI 主窗口。
-- 关闭最后一个窗口不得终止 App；自动监听和菜单栏入口必须继续在后台运行。只有系统 `Command-Q` 和菜单栏“退出 XDecode”可以终止进程。
+- 主 App 通过 `LSUIElement` 和 `.accessory` 固定为菜单栏 App，不得切换回 `.regular` 或出现在程序坞。菜单栏状态项默认显示，用户可在“常规”设置中独立隐藏；隐藏只移除 `NSStatusItem`，不得停止自动监听、任务处理或开机自启动，重新打开 App 仍须显示主窗口。窗口挂载时由 `MainWindowVisibilityCoordinator` 在首帧前控制透明度；通过“打开方式”冷启动时保持不可见，普通启动、重新打开 App 和菜单栏入口才显示主窗口。开机自启动只在后台启动自动监听，并按用户设置决定是否显示菜单栏，不主动创建主窗口；菜单栏启用时，“打开 XDecode”或“设置”必须能创建或恢复同一个 SwiftUI 主窗口。
+- 关闭最后一个窗口不得终止 App；自动监听必须继续在后台运行，菜单栏入口在用户启用状态项时继续可用。只有系统 `Command-Q` 和菜单栏“退出 XDecode”可以终止进程。
 - Security-scoped access 必须成对结束。异步任务的所有退出路径都要释放文件 URL 和授权目录访问。
 - 首次安装默认启用自动解密，并通过 Downloads entitlement 将 `~/Downloads` 作为静态授权监控目录；不要为该目录创建 security-scoped bookmark。用户显式关闭或移除目录后不得在后续启动中重新补回。
 - 首次安装的自动监听直接启动，不显示永久删除确认弹窗；设置页和 README 必须继续明确说明单日志成功后永久删除源文件。

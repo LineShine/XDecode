@@ -44,6 +44,10 @@ struct SettingsView: View {
                     get: { settings.launchAtLoginEnabled },
                     set: { model.setLaunchAtLoginEnabled($0) }
                 ))
+                Toggle("菜单栏", isOn: Binding(
+                    get: { settings.menuBarEnabled },
+                    set: { model.setMenuBarEnabled($0) }
+                ))
                 Toggle("通知", isOn: Binding(
                     get: { settings.notificationsEnabled },
                     set: { model.setNotificationsEnabled($0) }

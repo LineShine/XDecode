@@ -121,14 +121,8 @@ struct RootView: View {
         .scaleEffect(x: isSidebarCollapsed ? 1 : 0.86, y: 1, anchor: .leading)
     }
 
-    @ViewBuilder
     private func sidebarIcon(for section: SidebarSection) -> some View {
-        if section == .decode {
-            Image("MenuBarIcon")
-                .renderingMode(.template)
-        } else {
-            Image(systemName: section.icon)
-        }
+        Image(systemName: section.icon)
     }
 }
 

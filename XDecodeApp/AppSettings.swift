@@ -111,6 +111,7 @@ final class AppSettings: ObservableObject {
         static let automaticEnabled = "automaticEnabled"
         static let defaultDownloadsMonitoringEnabled = "defaultDownloadsMonitoringEnabled"
         static let launchAtLoginEnabled = "launchAtLoginEnabled"
+        static let menuBarEnabled = "menuBarEnabled"
         static let notificationsEnabled = "notificationsEnabled"
         static let monitoredFolderBookmark = "monitoredFolderBookmark"
         static let monitoredFolderBookmarks = "monitoredFolderBookmarks"
@@ -129,6 +130,7 @@ final class AppSettings: ObservableObject {
 
     @Published var automaticEnabled: Bool { didSet { defaults.set(automaticEnabled, forKey: Key.automaticEnabled) } }
     @Published var launchAtLoginEnabled: Bool { didSet { defaults.set(launchAtLoginEnabled, forKey: Key.launchAtLoginEnabled) } }
+    @Published var menuBarEnabled: Bool { didSet { defaults.set(menuBarEnabled, forKey: Key.menuBarEnabled) } }
     @Published var notificationsEnabled: Bool { didSet { defaults.set(notificationsEnabled, forKey: Key.notificationsEnabled) } }
     @Published var mxFilePattern: String { didSet { defaults.set(mxFilePattern, forKey: Key.mxFilePattern) } }
     @Published private(set) var defaultDownloadsMonitoringEnabled: Bool {
@@ -169,6 +171,9 @@ final class AppSettings: ObservableObject {
         launchAtLoginEnabled = defaults.object(forKey: Key.launchAtLoginEnabled) == nil
             ? true
             : defaults.bool(forKey: Key.launchAtLoginEnabled)
+        menuBarEnabled = defaults.object(forKey: Key.menuBarEnabled) == nil
+            ? true
+            : defaults.bool(forKey: Key.menuBarEnabled)
         notificationsEnabled = defaults.object(forKey: Key.notificationsEnabled) == nil
             ? true
             : defaults.bool(forKey: Key.notificationsEnabled)

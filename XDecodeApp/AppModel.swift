@@ -12,7 +12,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var icon: String {
         switch self {
-        case .decode: "doc.zipper"
+        case .decode: "sparkles"
         case .history: "clock.arrow.circlepath"
         case .monitor: "folder.badge.gearshape"
         case .finder: "cursorarrow.click"
@@ -274,7 +274,7 @@ final class AppModel: ObservableObject {
     }
 
     func launch() {
-        statusItem.install()
+        statusItem.setVisible(settings.menuBarEnabled)
         setLaunchAtLoginEnabled(settings.launchAtLoginEnabled)
         if settings.notificationsEnabled {
             requestNotificationAuthorization(showFailure: false)
@@ -368,6 +368,11 @@ final class AppModel: ObservableObject {
             return
         }
         requestNotificationAuthorization(showFailure: true)
+    }
+
+    func setMenuBarEnabled(_ enabled: Bool) {
+        settings.menuBarEnabled = enabled
+        statusItem.setVisible(enabled)
     }
 
     private func requestNotificationAuthorization(showFailure: Bool) {
