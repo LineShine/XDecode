@@ -18,7 +18,12 @@ struct FinderIntegrationView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("使用 XDecode 解密", systemImage: "sparkles")
+                    Label {
+                        Text("使用 XDecode 解密")
+                    } icon: {
+                        Image("MenuBarIcon")
+                            .renderingMode(.template)
+                    }
                         .fontWeight(.medium)
                     Divider()
                     Label("打开方式 → XDecode", systemImage: "macwindow")

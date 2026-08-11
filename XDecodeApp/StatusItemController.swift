@@ -15,7 +15,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         guard statusItem == nil else { return }
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         let image = NSImage(named: "MenuBarIcon")
-            ?? NSImage(systemSymbolName: "doc.on.doc", accessibilityDescription: "XDecode")
+            ?? NSImage(systemSymbolName: "xmark", accessibilityDescription: "XDecode")
         image?.isTemplate = true
         item.button?.image = image
         item.button?.setAccessibilityLabel("XDecode")

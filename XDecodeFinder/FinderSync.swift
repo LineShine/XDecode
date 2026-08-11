@@ -14,7 +14,8 @@ final class FinderSyncExtension: FIFinderSync {
 
         let menu = NSMenu(title: "XDecode")
         let item = NSMenuItem(title: "使用 XDecode 解密", action: #selector(decodeSelectedFiles), keyEquivalent: "")
-        item.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: nil)
+        item.image = finderMenuImage()
+            ?? NSImage(systemSymbolName: "xmark", accessibilityDescription: "XDecode")
         item.target = self
         menu.addItem(item)
         return menu
@@ -39,6 +40,14 @@ final class FinderSyncExtension: FIFinderSync {
     private static func isRegularFile(_ url: URL) -> Bool {
         guard url.isFileURL else { return false }
         return (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+    }
+
+    private func finderMenuImage() -> NSImage? {
+        guard let imageURL = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "svg"),
+              let image = NSImage(contentsOf: imageURL) else { return nil }
+        image.isTemplate = true
+        image.size = NSSize(width: 16, height: 16)
+        return image
     }
 
     private var mainApplicationURL: URL? {

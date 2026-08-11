@@ -12,7 +12,11 @@ struct RootView: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(SidebarSection.allCases, selection: $model.selectedSection) { section in
-                Label(section.rawValue, systemImage: section.icon)
+                Label {
+                    Text(section.rawValue)
+                } icon: {
+                    sidebarIcon(for: section)
+                }
                     .tag(section)
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
@@ -74,7 +78,7 @@ struct RootView: View {
                 Button {
                     model.selectedSection = section
                 } label: {
-                    Image(systemName: section.icon)
+                    sidebarIcon(for: section)
                         .font(.system(size: 17))
                         .scaleEffect(model.selectedSection == section ? 1.08 : 1)
                         .animation(.easeInOut(duration: 0.16), value: model.selectedSection)
@@ -115,6 +119,16 @@ struct RootView: View {
         .frame(maxHeight: .infinity)
         .background(.regularMaterial)
         .scaleEffect(x: isSidebarCollapsed ? 1 : 0.86, y: 1, anchor: .leading)
+    }
+
+    @ViewBuilder
+    private func sidebarIcon(for section: SidebarSection) -> some View {
+        if section == .decode {
+            Image("MenuBarIcon")
+                .renderingMode(.template)
+        } else {
+            Image(systemName: section.icon)
+        }
     }
 }
 

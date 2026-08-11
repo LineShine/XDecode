@@ -14,6 +14,7 @@
 		A00000000000000000000005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000043 /* Assets.xcassets */; };
 		A00000000000000000000006 /* TaskQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000044 /* TaskQueue.swift */; };
 		A00000000000000000000007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000045 /* UpdateChecker.swift */; };
+		A00000000000000000000008 /* MenuBarIcon.svg in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000046 /* MenuBarIcon.svg */; };
 		A00000000000000000000010 /* XDecodeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000030 /* XDecodeApp.swift */; };
 		A00000000000000000000011 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000031 /* AppModel.swift */; };
 		A00000000000000000000012 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000032 /* AppSettings.swift */; };
@@ -78,6 +79,7 @@
 		A00000000000000000000043 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A00000000000000000000044 /* TaskQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskQueue.swift; sourceTree = "<group>"; };
 		A00000000000000000000045 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		A00000000000000000000046 /* MenuBarIcon.svg */ = {isa = PBXFileReference; lastKnownFileType = image.svg; name = MenuBarIcon.svg; path = ../XDecodeApp/Assets.xcassets/MenuBarIcon.imageset/MenuBarIcon.svg; sourceTree = "<group>"; };
 		A00000000000000000000050 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		A00000000000000000000051 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A00000000000000000000052 /* XDecodeFinder.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = XDecodeFinder.entitlements; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000050 /* FinderSync.swift */,
+				A00000000000000000000046 /* MenuBarIcon.svg */,
 				A00000000000000000000051 /* Info.plist */,
 				A00000000000000000000052 /* XDecodeFinder.entitlements */,
 			);
@@ -260,6 +263,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00000000000000000000008 /* MenuBarIcon.svg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

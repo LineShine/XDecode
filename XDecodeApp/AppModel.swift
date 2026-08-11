@@ -12,7 +12,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var icon: String {
         switch self {
-        case .decode: "sparkles"
+        case .decode: "xmark"
         case .history: "clock.arrow.circlepath"
         case .monitor: "folder.badge.gearshape"
         case .finder: "cursorarrow.click"
