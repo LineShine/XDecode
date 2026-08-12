@@ -14,6 +14,7 @@ public sealed class AppServices : IAsyncDisposable
     public ObservableCollection<DecodeResult> RecentResults { get; } = [];
     public NotificationService Notifications { get; } = new();
     public StartupService Startup { get; } = new();
+    public ExplorerIntegrationService ExplorerIntegration { get; } = new();
     public TrayIconService? Tray { get; private set; }
 
     public AppServices(string localStateDirectory)
@@ -25,6 +26,9 @@ public sealed class AppServices : IAsyncDisposable
 
     public async Task InitializeAsync(MainWindow window)
     {
+        StartupTrace.Write("Services: ensuring Explorer integration");
+        if (!ExplorerIntegration.EnsureRegistered())
+            StartupTrace.Write("Services: failed to repair Explorer integration");
         StartupTrace.Write("Services: loading history");
         foreach (var result in await Orchestrator.LoadHistoryAsync())
             RecentResults.Add(result);

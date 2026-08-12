@@ -53,6 +53,7 @@ python3 script/xlog_gen_key.py
 - 点击“选择文件”，或按 `Command-O`。
 - 在 Finder 中选择“打开方式 -> XDecode”。
 - 启用 Finder 扩展后，使用右键菜单“使用 XDecode 解密”。Finder 扩展当前覆盖用户主目录，只转发普通文件，由主 App 按当前规则筛选。
+- Windows 端可在 `.xlog`、`.mx`、`.zip` 文件的右键菜单中选择带 App 图标的“使用 XDecode 解密”；现有 `.xlog`、`.mx`、`.logan`、`.zip`“打开方式”入口保持不变。
 - 在“监控文件夹”中添加一个或多个目录并启用“自动解密”。监听是递归的，直接处理 FSEvents 报告的新增路径，只在系统报告事件丢失时恢复性扫描全部目录；不符合规则的文件不会进入稳定性检查。
 
 “打开方式 -> XDecode”和 Finder 右键都会复用唯一的 `XDecode` 主进程；macOS 会为 Finder Sync 单独管理一个 `XDecodeFinder` 扩展进程。如果 XDecode 尚未运行，则在后台处理文件，不额外显示主窗口。

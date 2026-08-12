@@ -72,11 +72,38 @@ Root: HKCU; Subkey: "Software\Classes\.mx\OpenWithProgids"; ValueType: string; V
 Root: HKCU; Subkey: "Software\Classes\.logan\OpenWithProgids"; ValueType: string; ValueName: "XDecode.Log"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCU; Subkey: "Software\Classes\.zip\OpenWithProgids"; ValueType: string; ValueName: "XDecode.Log"; ValueData: ""; Flags: uninsdeletevalue
 
-Root: HKCU; Subkey: "Software\Classes\CLSID\{{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}"; ValueType: string; ValueName: ""; ValueData: "XDecode Explorer Command"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\CLSID\{{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}\InprocServer32"; ValueType: string; ValueName: ""; ValueData: "{app}\XDecode.ExplorerCommand.dll"
-Root: HKCU; Subkey: "Software\Classes\CLSID\{{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}\InprocServer32"; ValueType: string; ValueName: "ThreadingModel"; ValueData: "Apartment"
-Root: HKCU; Subkey: "Software\Classes\*\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MUIVerb"; ValueData: "使用 XDecode 解密"; Flags: uninsdeletekey
-Root: HKCU; Subkey: "Software\Classes\*\shell\XDecodeDecrypt"; ValueType: string; ValueName: "ExplorerCommandHandler"; ValueData: "{{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}"
+Root: HKCU; Subkey: "Software\Classes\CLSID\{{A9D140B0-2466-47AB-88F4-1A2D0C7BBE12}"; Flags: deletekey dontcreatekey
+Root: HKCU; Subkey: "Software\Classes\*\shell\XDecodeDecrypt"; Flags: deletekey dontcreatekey
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt"; Flags: deletekey dontcreatekey
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt"; Flags: deletekey dontcreatekey
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt"; Flags: deletekey dontcreatekey
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt"; Flags: deletekey dontcreatekey
+
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt"; ValueType: string; ValueName: ""; ValueData: "使用 XDecode 解密"; Check: HasNotepadVerb
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt"; ValueType: string; ValueName: "MUIVerb"; ValueData: "使用 XDecode 解密"; Flags: uninsdeletekey; Check: HasNotepadVerb
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\Assets\XDecode.ico"; Check: HasNotepadVerb
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt"; ValueType: string; ValueName: "AppliesTo"; ValueData: "System.FileExtension:="".xlog"" OR System.FileExtension:="".mx"" OR System.FileExtension:="".zip"""; Check: HasNotepadVerb
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: HasNotepadVerb
+Root: HKCU; Subkey: "Software\Classes\*\shell\Notepad.XDecodeDecrypt\command"; ValueType: string; ValueName: ""; ValueData: """{app}\XDecode.Windows.exe"" --explorer ""%1"""; Check: HasNotepadVerb
+
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt"; ValueType: string; ValueName: ""; ValueData: "使用 XDecode 解密"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MUIVerb"; ValueData: "使用 XDecode 解密"; Flags: uninsdeletekey; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\Assets\XDecode.ico"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt"; ValueType: string; ValueName: "Position"; ValueData: "Top"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.xlog\shell\XDecodeDecrypt\command"; ValueType: string; ValueName: ""; ValueData: """{app}\XDecode.Windows.exe"" --explorer ""%1"""; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt"; ValueType: string; ValueName: ""; ValueData: "使用 XDecode 解密"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MUIVerb"; ValueData: "使用 XDecode 解密"; Flags: uninsdeletekey; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\Assets\XDecode.ico"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt"; ValueType: string; ValueName: "Position"; ValueData: "Top"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.mx\shell\XDecodeDecrypt\command"; ValueType: string; ValueName: ""; ValueData: """{app}\XDecode.Windows.exe"" --explorer ""%1"""; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt"; ValueType: string; ValueName: ""; ValueData: "使用 XDecode 解密"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MUIVerb"; ValueData: "使用 XDecode 解密"; Flags: uninsdeletekey; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\Assets\XDecode.ico"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt"; ValueType: string; ValueName: "Position"; ValueData: "Top"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt"; ValueType: string; ValueName: "MultiSelectModel"; ValueData: "Player"; Check: NotepadVerbMissing
+Root: HKCU; Subkey: "Software\Classes\SystemFileAssociations\.zip\shell\XDecodeDecrypt\command"; ValueType: string; ValueName: ""; ValueData: """{app}\XDecode.Windows.exe"" --explorer ""%1"""; Check: NotepadVerbMissing
 
 [Run]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ""{tmp}\Migrate-LegacyPackage.ps1"" -Destination ""{localappdata}\LineShine\XDecode"""; StatusMsg: "正在迁移旧版本设置..."; Flags: runhidden waituntilterminated
@@ -91,6 +118,16 @@ var
   StartupWasEnabled: Boolean;
   ExistingUninstallString: String;
   ReinstallPage: TInputOptionWizardPage;
+
+function HasNotepadVerb(): Boolean;
+begin
+  Result := RegKeyExists(HKCR, '*\shell\Notepad');
+end;
+
+function NotepadVerbMissing(): Boolean;
+begin
+  Result := not HasNotepadVerb();
+end;
 
 function TakeVersionPart(var Value: String): Integer;
 var

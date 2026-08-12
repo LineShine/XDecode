@@ -63,7 +63,7 @@ Windows App SDK 固定在 1.7 的最新维护版，避免把 1.8+ 元包中的 W
 - 开始菜单入口和标准卸载项。
 - 当前用户开机启动。
 - `.xlog`、`.mx`、`.logan`、`.zip` 的“打开方式”。
-- 只转发普通文件的原生 Explorer Command。
+- 仅在 `.xlog`、`.mx`、`.zip` 普通文件上显示、带 XDecode 图标的经典右键命令；系统存在“用记事本打开”时紧随其后，否则置于顶部。主程序启动时会幂等修复当前用户注册。
 
 Windows 发布物当前不做 Authenticode 签名。安装 Inno Setup 7.0.2 后执行：
 
@@ -100,7 +100,7 @@ CI 还会验证 Inno Setup 工具自身的官方 release attestation 和发布�
 - `src/XDecode.Core`：解码协议、限制、单文件和 ZIP 事务。
 - `src/XDecode.Application`：规则、DPAPI 设置、历史、队列、监听和更新检查。
 - `src/XDecode.Windows`：WinUI 3、托盘、通知、开机启动和单实例激活。
-- `src/XDecode.ExplorerCommand`：只转发普通文件的原生 `IExplorerCommand`。
+- `src/XDecode.ExplorerCommand`：旧 MSIX 兼容使用的原生 `IExplorerCommand`；当前 `setup.exe` 使用主程序可自愈的静态 Shell Verb。
 - `installer`：当前用户安装、旧 MSIX 数据迁移、重装数据保护和 `setup.exe` 构建。
 - `packaging`：旧 MSIX 的清单与资源，仅保留为历史兼容参考，不参与发布构建。
 

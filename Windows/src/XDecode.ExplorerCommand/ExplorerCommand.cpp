@@ -46,7 +46,15 @@ std::wstring QuoteArgument(const std::wstring& value) {
     return result;
 }
 
-bool IsRegularFile(IShellItem* item) noexcept {
+bool IsSupportedExtension(const wchar_t* path) noexcept {
+    const auto extension = PathFindExtensionW(path);
+    return extension != nullptr &&
+           (_wcsicmp(extension, L".xlog") == 0 ||
+            _wcsicmp(extension, L".mx") == 0 ||
+            _wcsicmp(extension, L".zip") == 0);
+}
+
+bool IsSupportedRegularFile(IShellItem* item) noexcept {
     SFGAOF attributes{};
     if (FAILED(item->GetAttributes(SFGAO_FILESYSTEM | SFGAO_FOLDER, &attributes)) ||
         (attributes & SFGAO_FILESYSTEM) == 0 ||
@@ -58,8 +66,10 @@ bool IsRegularFile(IShellItem* item) noexcept {
         return false;
     }
     const auto fileAttributes = GetFileAttributesW(path);
+    const auto supportedExtension = IsSupportedExtension(path);
     CoTaskMemFree(path);
-    return fileAttributes != INVALID_FILE_ATTRIBUTES &&
+    return supportedExtension &&
+           fileAttributes != INVALID_FILE_ATTRIBUTES &&
            (fileAttributes & (FILE_ATTRIBUTE_DIRECTORY |
                               FILE_ATTRIBUTE_DEVICE |
                               FILE_ATTRIBUTE_REPARSE_POINT)) == 0;
@@ -94,7 +104,14 @@ public:
     IFACEMETHODIMP GetIcon(IShellItemArray*, LPWSTR* icon) override {
         if (icon == nullptr) return E_POINTER;
         *icon = nullptr;
-        return E_NOTIMPL;
+        wchar_t modulePath[MAX_PATH]{};
+        if (GetModuleFileNameW(g_module, modulePath, ARRAYSIZE(modulePath)) == 0) {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+        if (!PathRemoveFileSpecW(modulePath)) return E_FAIL;
+        std::wstring iconPath{modulePath};
+        iconPath += L"\\Assets\\XDecode.ico";
+        return DuplicateString(iconPath.c_str(), icon);
     }
     IFACEMETHODIMP GetToolTip(IShellItemArray*, LPWSTR* tooltip) override {
         return DuplicateString(L"将所选普通文件交给 XDecode", tooltip);
@@ -117,9 +134,9 @@ public:
                 *state = ECS_HIDDEN;
                 return S_OK;
             }
-            const auto regular = IsRegularFile(item);
+            const auto supported = IsSupportedRegularFile(item);
             item->Release();
-            if (!regular) {
+            if (!supported) {
                 *state = ECS_HIDDEN;
                 return S_OK;
             }
@@ -138,7 +155,7 @@ public:
         for (DWORD index = 0; index < count; ++index) {
             IShellItem* item{};
             RETURN_IF_FAILED(selection->GetItemAt(index, &item));
-            if (!IsRegularFile(item)) {
+            if (!IsSupportedRegularFile(item)) {
                 item->Release();
                 return E_INVALIDARG;
             }

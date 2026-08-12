@@ -42,9 +42,9 @@
                         <SymbolIcon Symbol="OpenFile" />
                         <TextBlock Text="打开方式 → XDecode" />
                     </StackPanel>
-                    <TextBlock Text="资源管理器扩展只转发普通文件；文件格式、规则和密钥统一由 XDecode 主程序处理。"
+                    <TextBlock Text="资源管理器扩展只转发受支持的普通文件；文件规则和密钥统一由 XDecode 主程序处理。"
                                Style="{StaticResource CaptionTextStyle}" />
-                    <TextBlock Text="支持 .xlog、.mx、.logan 和 .zip"
+                    <TextBlock Text="右键菜单支持 .xlog、.mx 和 .zip；打开方式仍支持 .logan"
                                Style="{StaticResource CaptionTextStyle}" />
                 </StackPanel>
             </Grid>

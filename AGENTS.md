@@ -18,7 +18,8 @@ Windows 代码位于 `Windows/`：
 - `XDecode.Core` 不依赖 WinUI，保持与 Swift Core 相同的模型和事务语义。
 - `XDecode.Application` 管理规则、DPAPI 设置、历史、任务队列和监听。
 - `XDecode.Windows` 只承载 WinUI 和 Windows 系统能力。
-- `XDecode.ExplorerCommand` 只转发普通文件，不读取设置、密钥或日志内容。
+- `XDecode.ExplorerCommand` 只转发 `.xlog`、`.mx`、`.zip` 普通文件，不读取设置、密钥或日志内容。
+- Windows `setup.exe` 使用静态 Shell Verb 提供经典右键入口；存在系统 Notepad Verb 时通过紧随其排序的通用键和 `AppliesTo` 限定三种扩展名，否则回退到每种扩展名的顶部项。主程序启动时只幂等修复这些当前用户注册，不复制解码或密钥逻辑。
 
 ## 常用命令
 
