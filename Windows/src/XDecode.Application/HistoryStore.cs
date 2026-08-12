@@ -82,6 +82,7 @@ public sealed class HistoryStore : IAsyncDisposable
         }
         catch (FileNotFoundException) { _values = []; }
         catch (JsonException) { _values = []; }
+        catch (NotSupportedException) { _values = []; }
         catch (IOException) { _values = []; }
         RetainValues();
     }

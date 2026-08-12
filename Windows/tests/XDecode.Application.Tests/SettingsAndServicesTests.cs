@@ -103,6 +103,36 @@ public sealed class SettingsAndServicesTests
     }
 
     [Fact]
+    public async Task HistoryRoundTripsAcrossStoreInstances()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var request = new DecodeRequest(
+            Guid.NewGuid(),
+            @"C:\logs\persisted.xlog",
+            LogFormat.Xlog,
+            DecodeOrigin.Automatic,
+            DateTimeOffset.UtcNow.AddMinutes(-1));
+        var expected = new DecodeResult(
+            Guid.NewGuid(),
+            request,
+            DecodeState.Completed,
+            @"C:\logs\persisted.log",
+            "done",
+            true,
+            DateTimeOffset.UtcNow);
+
+        await using (var writer = new HistoryStore(directory.Path))
+        {
+            await writer.AppendAsync(expected, TestContext.Current.CancellationToken);
+            await writer.FlushAsync(TestContext.Current.CancellationToken);
+        }
+
+        await using var reader = new HistoryStore(directory.Path);
+        var loaded = await reader.LoadAsync(TestContext.Current.CancellationToken);
+        Assert.Equal([expected], loaded);
+    }
+
+    [Fact]
     public async Task QueueIsUnboundedDeduplicatesPathsAndRunsAtMostTwo()
     {
         var running = 0;

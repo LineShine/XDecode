@@ -38,6 +38,7 @@ public sealed class CamelCaseJsonStringEnumConverter<TEnum>()
     : JsonStringEnumConverter<TEnum>(JsonNamingPolicy.CamelCase)
     where TEnum : struct, Enum;
 
+[method: JsonConstructor]
 public sealed record DecodeRequest(
     Guid Id,
     string SourcePath,
@@ -49,6 +50,7 @@ public sealed record DecodeRequest(
         : this(Guid.NewGuid(), Path.GetFullPath(sourcePath), format ?? LogFormats.Detect(sourcePath), origin, DateTimeOffset.UtcNow) { }
 }
 
+[method: JsonConstructor]
 public sealed record DecodeResult(
     Guid Id,
     DecodeRequest Request,
