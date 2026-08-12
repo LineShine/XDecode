@@ -19,8 +19,7 @@
                             <TextBlock Text="自动解密" VerticalAlignment="Center" />
                             <ToggleSwitch Grid.Column="1"
                                           x:Name="AutomaticToggle"
-                                          OffContent=""
-                                          OnContent=""
+                                          Style="{StaticResource TrailingToggleSwitchStyle}"
                                           Toggled="AutomaticToggle_Toggled" />
                         </Grid>
                         <Rectangle Height="1" Fill="{ThemeResource CardStrokeColorDefaultBrush}" />

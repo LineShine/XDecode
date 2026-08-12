@@ -11,6 +11,8 @@ public sealed partial class SettingsPage : Page
 {
     private readonly SettingsStore _settings = App.CurrentApp.Services.Settings;
     private bool _loading = true;
+    private bool _isCheckingForUpdates;
+    private bool _isDownloadingUpdate;
     private Guid? _editingXlog;
     private Guid? _editingLogan;
 
@@ -29,7 +31,7 @@ public sealed partial class SettingsPage : Page
     }
 
     private static string CurrentVersion =>
-        typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.1";
+        typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.0";
 
     private async Task LoadStartupStateAsync()
     {
@@ -84,29 +86,140 @@ public sealed partial class SettingsPage : Page
     }
 
     private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+        => await CheckForUpdatesAsync();
+
+    public async Task CheckForUpdatesAsync()
     {
+        if (_isCheckingForUpdates || _isDownloadingUpdate) return;
+        _isCheckingForUpdates = true;
+        SetUpdateState("正在检查...", isBusy: true);
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
             var result = await new UpdateChecker(client).CheckAsync(CurrentVersion);
-            UpdateInfo.IsOpen = true;
-            UpdateInfo.Severity = result.IsUpdateAvailable
-                ? InfoBarSeverity.Informational : InfoBarSeverity.Success;
-            UpdateInfo.Title = result.IsUpdateAvailable ? "发现新版本" : "当前已是最新版本";
-            UpdateInfo.Message = result.Release.Version;
-            if (result.IsUpdateAvailable)
+            if (!result.IsUpdateAvailable)
             {
-                Process.Start(new ProcessStartInfo(result.Release.PageUri.AbsoluteUri)
-                {
-                    UseShellExecute = true
-                });
+                ShowUpdateInfo(
+                    InfoBarSeverity.Success,
+                    "当前已是最新版本",
+                    $"当前版本 {CurrentVersion} 已是最新版本。");
+                return;
             }
+
+            var release = result.Release;
+            var notes = string.IsNullOrWhiteSpace(release.ReleaseNotes)
+                ? "此版本未提供发布说明。"
+                : release.ReleaseNotes.Trim();
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "发现新版本",
+                PrimaryButtonText = "下载更新",
+                CloseButtonText = "稍后",
+                DefaultButton = ContentDialogButton.Primary,
+                Content = new StackPanel
+                {
+                    Spacing = 10,
+                    MinWidth = 420,
+                    Children =
+                    {
+                        new TextBlock
+                        {
+                            Text = $"XDecode {release.Version} 已发布，当前版本为 {CurrentVersion}。"
+                        },
+                        new TextBlock
+                        {
+                            Text = $"安装包大小：{FormatSize(release.SizeBytes)}",
+                            Style = (Style)Microsoft.UI.Xaml.Application.Current.Resources[
+                                "CaptionTextStyle"]
+                        },
+                        new TextBlock
+                        {
+                            Text = notes,
+                            TextWrapping = TextWrapping.Wrap,
+                            MaxHeight = 180
+                        }
+                    }
+                }
+            };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                await DownloadUpdateAsync(release);
         }
         catch (Exception exception)
         {
             ShowError(UpdateInfo, exception.Message);
         }
+        finally
+        {
+            _isCheckingForUpdates = false;
+            if (!_isDownloadingUpdate) SetUpdateState("检查更新", isBusy: false);
+        }
     }
+
+    private async Task DownloadUpdateAsync(UpdateRelease release)
+    {
+        _isDownloadingUpdate = true;
+        UpdateProgress.Value = 0;
+        UpdateProgress.Visibility = Visibility.Visible;
+        SetUpdateState("正在下载...", isBusy: true);
+        var progress = new Progress<UpdateDownloadProgress>(value =>
+        {
+            UpdateProgress.Value = value.Percentage;
+            UpdateButtonText.Text = $"正在下载 {value.Percentage:0}%";
+        });
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            var packagePath = await new UpdatePackageDownloader(client)
+                .DownloadAsync(release, progress);
+            Process.Start(new ProcessStartInfo(packagePath) { UseShellExecute = true });
+
+            var dialog = new ContentDialog
+            {
+                XamlRoot = XamlRoot,
+                Title = "安装包已打开",
+                Content = "请退出 XDecode，然后在安装窗口中完成更新。",
+                PrimaryButtonText = "退出 XDecode",
+                CloseButtonText = "稍后",
+                DefaultButton = ContentDialogButton.Primary
+            };
+            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+                App.CurrentApp.MainWindow.ExitApplication();
+        }
+        catch (Exception exception)
+        {
+            ShowError(UpdateInfo, exception.Message);
+        }
+        finally
+        {
+            _isDownloadingUpdate = false;
+            UpdateProgress.Visibility = Visibility.Collapsed;
+            SetUpdateState("检查更新", isBusy: false);
+        }
+    }
+
+    private void SetUpdateState(string buttonText, bool isBusy)
+    {
+        UpdateButtonText.Text = buttonText;
+        UpdateButton.IsEnabled = !isBusy;
+    }
+
+    private void ShowUpdateInfo(InfoBarSeverity severity, string title, string message)
+    {
+        UpdateInfo.IsOpen = true;
+        UpdateInfo.Severity = severity;
+        UpdateInfo.Title = title;
+        UpdateInfo.Message = message;
+    }
+
+    private static string FormatSize(long sizeBytes) => sizeBytes switch
+    {
+        >= 1_073_741_824 => $"{sizeBytes / 1_073_741_824d:0.0} GiB",
+        >= 1_048_576 => $"{sizeBytes / 1_048_576d:0.0} MiB",
+        >= 1_024 => $"{sizeBytes / 1_024d:0.0} KiB",
+        _ => $"{sizeBytes} 字节"
+    };
 
     private async void ZipPattern_LostFocus(object sender, RoutedEventArgs e)
     {

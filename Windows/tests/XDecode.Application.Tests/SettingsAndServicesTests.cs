@@ -251,24 +251,148 @@ public sealed class SettingsAndServicesTests
     [InlineData("v1.2.3", "1.2.3", false)]
     [InlineData("1.2.4", "1.2.3", true)]
     [InlineData("2.0", "1.99.99", true)]
+    [InlineData("1.2.3-beta.1", "1.2.2", true)]
     public void SemanticVersionsCompareCorrectly(string latest, string current, bool newer) =>
         Assert.Equal(newer, UpdateChecker.ParseVersion(latest) > UpdateChecker.ParseVersion(current));
 
     [Fact]
-    public async Task UpdateCheckerUsesGitHubMetadataOnly()
+    public async Task UpdateCheckerUsesFlatStoreWindowsMetadata()
     {
         var handler = new StubHttpHandler(new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(
-                """{"tag_name":"v2.0.0","html_url":"https://github.com/LineShine/XDecode/releases/tag/v2.0.0"}""",
+                """{"currentRelease":{"version":"v2.0.0","downloadUrl":"/api/releases/release-id/download","sizeBytes":4096,"releaseNotes":"改进更新流程"}}""",
                 Encoding.UTF8, "application/json")
         });
         using var client = new HttpClient(handler);
         var result = await new UpdateChecker(client).CheckAsync(
             "1.0.0", TestContext.Current.CancellationToken);
+
         Assert.True(result.IsUpdateAvailable);
+        Assert.Equal("v2.0.0", result.Release.Version);
+        Assert.Equal(new Uri("https://flatstore.sfhw.cc/api/releases/release-id/download"),
+            result.Release.DownloadUri);
+        Assert.Equal(4096, result.Release.SizeBytes);
+        Assert.Equal("改进更新流程", result.Release.ReleaseNotes);
         Assert.Equal(HttpMethod.Get, handler.Request?.Method);
-        Assert.Equal(UpdateChecker.LatestReleaseEndpoint, handler.Request?.RequestUri);
+        Assert.Equal(UpdateChecker.ReleasesEndpoint, handler.Request?.RequestUri);
+        Assert.Contains("platform=Windows", handler.Request?.RequestUri?.Query, StringComparison.Ordinal);
+        Assert.Equal("application/json", handler.Request?.Headers.Accept.Single().MediaType);
+        Assert.Contains("XDecode/1.0.0", handler.Request?.Headers.UserAgent.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UpdateCheckerReportsMissingWindowsRelease()
+    {
+        var handler = new StubHttpHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"currentRelease":null,"releases":[]}""", Encoding.UTF8, "application/json")
+        });
+        using var client = new HttpClient(handler);
+
+        var error = await Assert.ThrowsAsync<UpdateCheckException>(() =>
+            new UpdateChecker(client).CheckAsync("1.0.0", TestContext.Current.CancellationToken));
+
+        Assert.Equal("暂未找到可用的 Windows 发布版本。", error.Message);
+    }
+
+    [Theory]
+    [InlineData("http://downloads.example.com/XDecode.exe")]
+    [InlineData("")]
+    public async Task UpdateCheckerRejectsInvalidDownloadUrls(string downloadUrl)
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            currentRelease = new
+            {
+                version = "1.1.0",
+                downloadUrl,
+                sizeBytes = 4096,
+                releaseNotes = (string?)null
+            }
+        });
+        var handler = new StubHttpHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        });
+        using var client = new HttpClient(handler);
+
+        var error = await Assert.ThrowsAsync<UpdateCheckException>(() =>
+            new UpdateChecker(client).CheckAsync("1.0.0", TestContext.Current.CancellationToken));
+
+        Assert.Equal("更新服务返回了无法识别的数据。", error.Message);
+    }
+
+    [Fact]
+    public async Task DownloaderSavesX64InstallerWithoutOverwritingExistingFile()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var package = MakePeExecutable();
+        var existing = Path.Combine(directory.Path, "XDecode-Setup-x64.exe");
+        await File.WriteAllTextAsync(existing, "existing", TestContext.Current.CancellationToken);
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(package)
+        };
+        response.Content.Headers.ContentType = new("application/octet-stream");
+        response.Content.Headers.ContentDisposition = new("attachment")
+        {
+            FileName = "\"XDecode-Setup-x64.exe\""
+        };
+        var handler = new StubHttpHandler(response);
+        using var client = new HttpClient(handler);
+        var release = new UpdateRelease(
+            "1.1.0", new Uri("https://flatstore.sfhw.cc/download/setup"), package.Length, "notes");
+        UpdateDownloadProgress? lastProgress = null;
+        var progress = new InlineProgress<UpdateDownloadProgress>(value => lastProgress = value);
+
+        var saved = await new UpdatePackageDownloader(client, directory.Path).DownloadAsync(
+            release, progress, TestContext.Current.CancellationToken);
+
+        Assert.Equal("XDecode-Setup-x64-1.exe", Path.GetFileName(saved));
+        Assert.Equal(package, await File.ReadAllBytesAsync(saved, TestContext.Current.CancellationToken));
+        Assert.Equal("existing", await File.ReadAllTextAsync(existing, TestContext.Current.CancellationToken));
+        Assert.Equal(package.Length, lastProgress?.BytesReceived);
+        Assert.Equal(100, lastProgress?.Percentage);
+        Assert.Equal("application/octet-stream", handler.Request?.Headers.Accept.Single().MediaType);
+        Assert.DoesNotContain(Directory.EnumerateFiles(directory.Path), path =>
+            Path.GetFileName(path).StartsWith(".xdecode-update-", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task DownloaderRejectsSizeMismatchAndCleansTemporaryFile()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var package = MakePeExecutable();
+        var handler = new StubHttpHandler(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(package)
+        });
+        using var client = new HttpClient(handler);
+        var release = new UpdateRelease(
+            "1.1.0", new Uri("https://flatstore.sfhw.cc/download/setup"), package.Length + 1, null);
+
+        var error = await Assert.ThrowsAsync<UpdateDownloadException>(() =>
+            new UpdatePackageDownloader(client, directory.Path).DownloadAsync(
+                release, cancellationToken: TestContext.Current.CancellationToken));
+
+        Assert.Contains("大小校验失败", error.Message, StringComparison.Ordinal);
+        Assert.Empty(Directory.EnumerateFiles(directory.Path));
+    }
+
+    [Theory]
+    [InlineData(0x014c)]
+    [InlineData(0x0000)]
+    public void DownloaderRejectsNonX64Executables(ushort machine)
+    {
+        using var directory = TemporaryDirectory.Create();
+        var path = Path.Combine(directory.Path, "setup.exe");
+        var package = MakePeExecutable(machine);
+        File.WriteAllBytes(path, package);
+
+        Assert.Throws<UpdateDownloadException>(() =>
+            UpdatePackageDownloader.ValidateWindowsExecutable(path, package.Length));
     }
 
     private sealed class StubHttpHandler(HttpResponseMessage response) : HttpMessageHandler
@@ -280,6 +404,23 @@ public sealed class SettingsAndServicesTests
             Request = request;
             return Task.FromResult(response);
         }
+    }
+
+    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
+
+    private static byte[] MakePeExecutable(ushort machine = 0x8664)
+    {
+        var bytes = new byte[512];
+        bytes[0] = (byte)'M';
+        bytes[1] = (byte)'Z';
+        BitConverter.GetBytes(0x80).CopyTo(bytes, 0x3C);
+        bytes[0x80] = (byte)'P';
+        bytes[0x81] = (byte)'E';
+        BitConverter.GetBytes(machine).CopyTo(bytes, 0x84);
+        return bytes;
     }
 }
 

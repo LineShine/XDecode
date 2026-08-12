@@ -15,7 +15,9 @@
                         SelectionChanged="Navigation_SelectionChanged">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="解密" Tag="decode">
-                    <NavigationViewItem.Icon><SymbolIcon Symbol="Document" /></NavigationViewItem.Icon>
+                    <NavigationViewItem.Icon>
+                        <PathIcon Data="M8.5,1 L10.1,6.4 L15.5,8 L10.1,9.6 L8.5,15 L6.9,9.6 L1.5,8 L6.9,6.4 Z M17.2,10.8 L18.2,14.1 L21.5,15.1 L18.2,16.1 L17.2,19.4 L16.2,16.1 L12.9,15.1 L16.2,14.1 Z M18.1,1.6 L18.8,3.9 L21.1,4.6 L18.8,5.3 L18.1,7.6 L17.4,5.3 L15.1,4.6 L17.4,3.9 Z" />
+                    </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem Content="历史记录" Tag="history">
                     <NavigationViewItem.Icon><SymbolIcon Symbol="Clock" /></NavigationViewItem.Icon>

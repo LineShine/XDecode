@@ -45,6 +45,13 @@ public sealed partial class MainWindow : Window
 
     public void NavigateTo(string tag) => NavigateTo(tag, activate: true);
 
+    public void ShowSettingsAndCheckForUpdates()
+    {
+        NavigateTo("settings");
+        if (ContentFrame.Content is Pages.SettingsPage settingsPage)
+            _ = settingsPage.CheckForUpdatesAsync();
+    }
+
     private void NavigateTo(string tag, bool activate)
     {
         var page = tag switch

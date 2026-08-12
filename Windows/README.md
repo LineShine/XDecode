@@ -107,4 +107,9 @@ CI 还会验证 Inno Setup 工具自身的官方 release attestation 和发布�
 ZIP 的 Windows 路径校验额外拒绝 UNC、盘符、ADS、设备名、非法字符、末尾空格或点、
 符号链接和特殊条目。单文件完整发布后才永久删除源文件；ZIP 永远保留。
 
+设置页和托盘菜单只在用户主动操作时通过 FlatStore 公开版本接口检查 Windows 更新。
+发现新版本后会显示版本、安装包大小和发布说明；只有用户确认后才把安装 EXE 下载到
+Downloads。下载文件最大 1 GiB，实际大小必须与发布元数据完全一致，并通过 PE/x64
+结构校验；同名文件不会被覆盖。校验通过后由系统启动安装程序，再由 App 单独询问是否退出。
+
 Windows 10/11 的手工安装与系统集成验收项见 [`ACCEPTANCE.md`](ACCEPTANCE.md)。

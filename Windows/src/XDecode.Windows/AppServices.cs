@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -36,7 +35,7 @@ public sealed class AppServices : IAsyncDisposable
         Tray.OpenRequested += window.ShowAndActivate;
         Tray.SelectFilesRequested += () => _ = PickAndEnqueueAsync(window);
         Tray.SettingsRequested += () => window.NavigateTo("settings");
-        Tray.CheckUpdateRequested += () => _ = CheckForUpdatesAsync();
+        Tray.CheckUpdateRequested += window.ShowSettingsAndCheckForUpdates;
         Tray.ExitRequested += window.ExitApplication;
         Tray.Initialize();
         StartupTrace.Write("Services: tray icon initialized");
@@ -79,31 +78,6 @@ public sealed class AppServices : IAsyncDisposable
         await Orchestrator.ClearHistoryAsync();
         RecentResults.Clear();
         Tray?.UpdateRecent([]);
-    }
-
-    public async Task CheckForUpdatesAsync()
-    {
-        try
-        {
-            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-            var version = typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.1";
-            var result = await new UpdateChecker(client).CheckAsync(version);
-            if (result.IsUpdateAvailable)
-            {
-                Process.Start(new ProcessStartInfo(result.Release.PageUri.AbsoluteUri)
-                {
-                    UseShellExecute = true
-                });
-            }
-            else
-            {
-                Notifications.ShowMessage("检查更新", "当前已是最新版本");
-            }
-        }
-        catch (Exception exception)
-        {
-            Notifications.ShowMessage("检查更新失败", exception.Message);
-        }
     }
 
     private void OnResultCompleted(DecodeResult result)
