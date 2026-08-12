@@ -11,11 +11,13 @@ namespace XDecode.WindowsApp.Pages;
 public sealed partial class DecodePage : Page
 {
     private readonly ObservableCollection<DecodeResult> _recent = [];
+    private readonly ObservableCollection<DecodeResult> _results;
     private bool _subscribed;
 
     public DecodePage()
     {
         InitializeComponent();
+        _results = App.CurrentApp.Services.RecentResults;
         RecentList.ItemsSource = _recent;
     }
 
@@ -23,7 +25,7 @@ public sealed partial class DecodePage : Page
     {
         if (!_subscribed)
         {
-            App.CurrentApp.Services.RecentResults.CollectionChanged += Results_CollectionChanged;
+            _results.CollectionChanged += Results_CollectionChanged;
             _subscribed = true;
         }
         RefreshResults();
@@ -32,7 +34,7 @@ public sealed partial class DecodePage : Page
     private void Page_Unloaded(object sender, RoutedEventArgs e)
     {
         if (!_subscribed) return;
-        App.CurrentApp.Services.RecentResults.CollectionChanged -= Results_CollectionChanged;
+        _results.CollectionChanged -= Results_CollectionChanged;
         _subscribed = false;
     }
 
@@ -42,7 +44,7 @@ public sealed partial class DecodePage : Page
     private void RefreshResults()
     {
         _recent.Clear();
-        foreach (var result in App.CurrentApp.Services.RecentResults.Take(5))
+        foreach (var result in _results.Take(5))
             _recent.Add(result);
         var hasResults = _recent.Count > 0;
         RecentList.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
