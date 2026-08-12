@@ -70,7 +70,7 @@ Windows 发布物当前不做 Authenticode 签名。安装 Inno Setup 7.0.2 后�
 ```powershell
 & .\Windows\installer\build-setup.ps1 `
   -PublishDirectory $publish `
-  -Version "1.0.0"
+  -Version "1.0.1"
 ```
 
 输出位于 `Windows\installer\Output\XDecode-Setup-x64.exe`。构建脚本会校验 x64

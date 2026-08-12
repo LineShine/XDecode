@@ -12,9 +12,15 @@
     <ApplicationIcon>Assets\XDecode.ico</ApplicationIcon>
     <RootNamespace>XDecode.WindowsApp</RootNamespace>
     <NoWarn>$(NoWarn);SYSLIB1054</NoWarn>
+    <ZlibRuntimePath>$([System.IO.Path]::Combine('$(VcpkgInstalledDir)', 'x64-windows', 'bin', 'zlib1.dll'))</ZlibRuntimePath>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="Assets\XDecode.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="$(ZlibRuntimePath)" Condition="Exists('$(ZlibRuntimePath)')">
+      <Link>zlib1.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
@@ -28,4 +34,8 @@
       <_Parameter1>XDecode.Windows.Tests</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
+  <Target Name="ValidateZlibRuntimeForPublish" BeforeTargets="Publish">
+    <Error Condition="!Exists('$(ZlibRuntimePath)')"
+           Text="The x64 zlib runtime was not found at $(ZlibRuntimePath). Restore vcpkg and pass VcpkgInstalledDir before publishing." />
+  </Target>
 </Project>

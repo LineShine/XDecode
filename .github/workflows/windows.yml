@@ -211,6 +211,9 @@ jobs:
             if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) {
               throw "setup.exe did not install XDecode.Windows.exe"
             }
+            if (-not (Test-Path -LiteralPath (Join-Path $installDirectory 'zlib1.dll') -PathType Leaf)) {
+              throw "setup.exe did not install the x64 zlib runtime"
+            }
 
             $expectedVersion = [version]"$($env:XDECODE_VERSION).0"
             $actualVersion = [version](Get-Item -LiteralPath $appPath).VersionInfo.FileVersion

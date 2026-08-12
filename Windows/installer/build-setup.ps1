@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$PublishDirectory,
-    [string]$Version = '1.0.0',
+    [string]$Version = '1.0.1',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot 'Output'),
     [string]$InnoCompiler
 )
@@ -17,11 +17,15 @@ if ($Version -notmatch '^\d+\.\d+\.\d+$') {
 $resolvedPublish = (Resolve-Path -LiteralPath $PublishDirectory).Path
 $appPath = Join-Path $resolvedPublish 'XDecode.Windows.exe'
 $explorerCommandPath = Join-Path $resolvedPublish 'XDecode.ExplorerCommand.dll'
+$zlibPath = Join-Path $resolvedPublish 'zlib1.dll'
 if (-not (Test-Path -LiteralPath $appPath -PathType Leaf)) {
     throw 'The publish directory does not contain XDecode.Windows.exe'
 }
 if (-not (Test-Path -LiteralPath $explorerCommandPath -PathType Leaf)) {
     throw 'The publish directory does not contain XDecode.ExplorerCommand.dll'
+}
+if (-not (Test-Path -LiteralPath $zlibPath -PathType Leaf)) {
+    throw 'The publish directory does not contain zlib1.dll'
 }
 
 function Get-PeMachine([string]$Path) {
@@ -42,7 +46,8 @@ function Get-PeMachine([string]$Path) {
 }
 
 if ((Get-PeMachine -Path $appPath) -ne 0x8664 -or
-    (Get-PeMachine -Path $explorerCommandPath) -ne 0x8664) {
+    (Get-PeMachine -Path $explorerCommandPath) -ne 0x8664 -or
+    (Get-PeMachine -Path $zlibPath) -ne 0x8664) {
     throw 'XDecode publish output must contain x64 PE binaries'
 }
 $expectedFileVersion = [version]"$Version.0"

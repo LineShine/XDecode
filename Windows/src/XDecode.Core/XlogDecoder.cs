@@ -70,7 +70,7 @@ public sealed class XlogDecoder(IEnumerable<XlogCredentials>? credentials = null
             {
                 throw;
             }
-            catch
+            catch (Exception exception) when (!IsNativeRuntimeFailure(exception))
             {
                 diagnostics.FailedFrames++;
                 diagnostics.InvalidPayloadFrames++;
@@ -115,10 +115,13 @@ public sealed class XlogDecoder(IEnumerable<XlogCredentials>? credentials = null
             {
                 throw;
             }
-            catch { }
+            catch (Exception exception) when (!IsNativeRuntimeFailure(exception)) { }
         }
         throw PayloadException.Rejected();
     }
+
+    private static bool IsNativeRuntimeFailure(Exception exception) => exception is
+        DllNotFoundException or EntryPointNotFoundException or BadImageFormatException;
 
     private static byte[] Decompress(ReadOnlySpan<byte> payload, XlogMagic magic, int maximumOutputSize) =>
         magic switch

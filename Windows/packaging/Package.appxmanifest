@@ -12,7 +12,7 @@
   IgnorableNamespaces="uap uap3 desktop desktop4 desktop5 desktop6 com rescap">
   <Identity Name="LineShine.XDecode"
             Publisher="CN=LineShine"
-            Version="1.0.0.0"
+            Version="1.0.1.0"
             ProcessorArchitecture="x64" />
   <Properties>
     <DisplayName>XDecode</DisplayName>
