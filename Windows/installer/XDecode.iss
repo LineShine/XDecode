@@ -2,7 +2,7 @@
   #error SourcePublishDir must point to the unpackaged self-contained publish directory
 #endif
 #ifndef AppVersion
-  #define AppVersion "1.0.4"
+  #define AppVersion "1.0.5"
 #endif
 #ifndef OutputDir
   #define OutputDir SourcePath + "Output"
@@ -302,7 +302,9 @@ begin
 
   Exec(
     ExpandConstant('{sys}\taskkill.exe'),
-    '/F /T /IM XDecode.Windows.exe',
+    { setup.exe can be a child of XDecode.Windows.exe when launched by the updater. }
+    { Killing the process tree would terminate this installer before the upgrade starts. }
+    '/F /IM XDecode.Windows.exe',
     '',
     SW_HIDE,
     ewWaitUntilTerminated,

@@ -31,7 +31,7 @@ public sealed partial class SettingsPage : Page
     }
 
     private static string CurrentVersion =>
-        typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.4";
+        typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.5";
 
     private async Task LoadStartupStateAsync()
     {

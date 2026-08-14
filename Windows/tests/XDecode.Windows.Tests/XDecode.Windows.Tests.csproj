@@ -16,4 +16,9 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\installer\XDecode.iss"
+          Link="Installer\XDecode.iss"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
