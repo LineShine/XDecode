@@ -13,22 +13,22 @@ public sealed record UpdateRelease(
 
 public sealed record UpdateAvailability(bool IsUpdateAvailable, UpdateRelease Release);
 
-public sealed class UpdateChecker(HttpClient httpClient, Uri? endpoint = null)
+public sealed class UpdateChecker(
+    HttpClient httpClient,
+    Uri? endpoint = null,
+    TimeSpan? retryDelay = null)
 {
     public static readonly Uri ReleasesEndpoint = new(
         "https://flatstore.sfhw.cc/api/apps/5064015e-5fab-4aa6-9943-67678c272378/releases?platform=Windows&limit=1");
 
     private readonly Uri _endpoint = endpoint ?? ReleasesEndpoint;
+    private readonly TimeSpan _retryDelay = retryDelay ?? TimeSpan.FromMilliseconds(500);
 
     public async Task<UpdateAvailability> CheckAsync(
         string currentVersion,
         CancellationToken cancellationToken = default)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, _endpoint);
-        request.Headers.Accept.ParseAdd("application/json");
-        request.Headers.UserAgent.ParseAdd($"XDecode/{currentVersion}");
-
-        using var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(currentVersion, cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
             throw new UpdateCheckException("暂未找到可用的 Windows 发布版本。");
         if (!response.IsSuccessStatusCode)
@@ -66,6 +66,33 @@ public sealed class UpdateChecker(HttpClient httpClient, Uri? endpoint = null)
             currentRelease.ReleaseNotes);
         return new(ParseVersion(release.Version) > ParseVersion(currentVersion), release);
     }
+
+    private async Task<HttpResponseMessage> SendAsync(
+        string currentVersion,
+        CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, _endpoint);
+            request.Headers.Accept.ParseAdd("application/json");
+            request.Headers.UserAgent.ParseAdd($"XDecode/{currentVersion}");
+            try
+            {
+                return await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException exception) when (
+                attempt == 0 && IsRetryableTransportError(exception))
+            {
+                await Task.Delay(_retryDelay, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    private static bool IsRetryableTransportError(HttpRequestException exception) =>
+        exception.HttpRequestError is
+            HttpRequestError.ConnectionError or
+            HttpRequestError.NameResolutionError or
+            HttpRequestError.ResponseEnded;
 
     public static Version ParseVersion(string rawValue)
     {

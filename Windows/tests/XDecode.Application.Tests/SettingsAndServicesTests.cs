@@ -316,6 +316,27 @@ public sealed class SettingsAndServicesTests
         Assert.Contains("XDecode/1.0.0", handler.Request?.Headers.UserAgent.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(HttpRequestError.ConnectionError)]
+    [InlineData(HttpRequestError.NameResolutionError)]
+    [InlineData(HttpRequestError.ResponseEnded)]
+    public async Task UpdateCheckerRetriesInitialTransientTransportFailure(HttpRequestError error)
+    {
+        var handler = new InitiallyFailingHttpHandler(error, new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"currentRelease":{"version":"v2.0.0","downloadUrl":"/api/releases/release-id/download","sizeBytes":4096,"releaseNotes":null}}""",
+                Encoding.UTF8, "application/json")
+        });
+        using var client = new HttpClient(handler);
+
+        var result = await new UpdateChecker(client, retryDelay: TimeSpan.Zero).CheckAsync(
+            "1.0.0", TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsUpdateAvailable);
+        Assert.Equal(2, handler.RequestCount);
+    }
+
     [Fact]
     public async Task UpdateCheckerReportsMissingWindowsRelease()
     {
@@ -437,6 +458,26 @@ public sealed class SettingsAndServicesTests
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Request = request;
+            return Task.FromResult(response);
+        }
+    }
+
+    private sealed class InitiallyFailingHttpHandler(
+        HttpRequestError error,
+        HttpResponseMessage response) : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            if (RequestCount == 1)
+            {
+                return Task.FromException<HttpResponseMessage>(
+                    new HttpRequestException(error, "The network is not ready."));
+            }
             return Task.FromResult(response);
         }
     }
