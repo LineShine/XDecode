@@ -28,6 +28,8 @@ public sealed class SettingsDocument
 
 public sealed class SettingsStore
 {
+    private const string LegacyZipPattern = @"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
@@ -204,6 +206,8 @@ public sealed class SettingsStore
             .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         Current.LoganProfiles = Current.LoganProfiles.Select(value =>
             value.FilePattern == "*.logan" ? value with { FilePattern = FilenamePatternDefaults.Logan } : value).ToList();
+        Current.ZipPatternRules = Current.ZipPatternRules.Select(value =>
+            value.Pattern == LegacyZipPattern ? value with { Pattern = FilenamePatternDefaults.Zip } : value).ToList();
         if (Current.ZipPatternRules.Count == 0)
             Current.ZipPatternRules.Add(new(Guid.NewGuid(), FilenamePatternDefaults.Zip));
     }

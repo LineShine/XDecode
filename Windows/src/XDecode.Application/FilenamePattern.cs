@@ -8,7 +8,7 @@ public static class FilenamePatternDefaults
     public const string Xlog = "*.xlog";
     public const string Logan = "yyyy-MM-dd";
     public const string Mx = "*.mx";
-    public const string Zip = @"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$";
+    public const string Zip = @"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*( \([0-9]+\))?\.zip$";
 }
 
 public static class FilenamePattern

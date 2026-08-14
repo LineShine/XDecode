@@ -24,12 +24,47 @@ public sealed class SettingsAndServicesTests
     [InlineData("a_b.zip", true)]
     [InlineData("abc-def.ZIP", true)]
     [InlineData("338911075_20059056_1logs.zip", true)]
+    [InlineData("f9017f94-25e8-4366-b33b-ebc7d8af1d65 (1).zip", true)]
+    [InlineData("abc-def (2).ZIP", true)]
+    [InlineData("1520_1785225610163 (10).zip", true)]
     [InlineData("archive.zip", false)]
+    [InlineData("archive (1).zip", false)]
     [InlineData("abc--def.zip", false)]
     [InlineData("user cache.zip", false)]
     [InlineData("日志_123.zip", false)]
+    [InlineData("f9017f94-25e8-4366-b33b-ebc7d8af1d65 (x).zip", false)]
+    [InlineData("f9017f94-25e8-4366-b33b-ebc7d8af1d65 ().zip", false)]
+    [InlineData("f9017f94-25e8-4366-b33b-ebc7d8af1d65(1).zip", false)]
     public void DefaultZipRuleMatchesProductContract(string fileName, bool expected) =>
         Assert.Equal(expected, FilenamePattern.Matches(FilenamePatternDefaults.Zip, fileName));
+
+    [Fact]
+    public void LegacyDefaultZipRuleMigratesToAcceptDuplicateDownloadSuffixes()
+    {
+        using var directory = TemporaryDirectory.Create();
+        var downloads = Path.Combine(directory.Path, "Downloads");
+        Directory.CreateDirectory(downloads);
+        var legacyRulePattern = @"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$";
+        var settingsPath = Path.Combine(directory.Path, "settings.v1.json");
+        File.WriteAllText(settingsPath, JsonSerializer.Serialize(new
+        {
+            version = 1,
+            zipPatternRules = new object[]
+            {
+                new { id = new Guid("11111111-1111-1111-1111-111111111111"), pattern = legacyRulePattern },
+                new { id = new Guid("22222222-2222-2222-2222-222222222222"), pattern = @"^release\..+\.zip$" }
+            }
+        }));
+
+        var settings = new SettingsStore(directory.Path, downloads);
+        Assert.Equal(FilenamePatternDefaults.Zip, settings.Current.ZipPatternRules[0].Pattern);
+        Assert.Equal(@"^release\..+\.zip$", settings.Current.ZipPatternRules[1].Pattern);
+        Assert.Equal(
+            LogFormat.Zip,
+            settings.LogFormatFor(Path.Combine(@"C:\logs", "f9017f94-25e8-4366-b33b-ebc7d8af1d65 (1).zip")));
+        Assert.Null(settings.LogFormatFor(Path.Combine(@"C:\logs", "f9017f94-25e8-4366-b33b-ebc7d8af1d65 (x).zip")));
+        Assert.Equal(LogFormat.Zip, settings.LogFormatFor(Path.Combine(@"C:\logs", "release.prod.zip")));
+    }
 
     [Fact]
     public async Task FirstInstallEnablesDownloadsAndExplicitRemovalPersists()

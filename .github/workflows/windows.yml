@@ -18,7 +18,7 @@ jobs:
         shell: pwsh
     env:
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}\Windows\vcpkg_installed
-      XDECODE_VERSION: 1.0.1
+      XDECODE_VERSION: 1.0.2
       INNO_SETUP_VERSION: 7.0.2
       HAS_INNO_SETUP_LICENSE: ${{ secrets.INNO_SETUP_LICENSE_KEY != '' }}
 
