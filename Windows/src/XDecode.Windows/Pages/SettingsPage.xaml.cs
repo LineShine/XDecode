@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -31,7 +30,7 @@ public sealed partial class SettingsPage : Page
     }
 
     private static string CurrentVersion =>
-        typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.5";
+        typeof(App).Assembly.GetName().Version?.ToString(3) ?? "1.0.6";
 
     private async Task LoadStartupStateAsync()
     {
@@ -173,19 +172,7 @@ public sealed partial class SettingsPage : Page
             using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
             var packagePath = await new UpdatePackageDownloader(client)
                 .DownloadAsync(release, progress);
-            Process.Start(new ProcessStartInfo(packagePath) { UseShellExecute = true });
-
-            var dialog = new ContentDialog
-            {
-                XamlRoot = XamlRoot,
-                Title = "安装包已打开",
-                Content = "请退出 XDecode，然后在安装窗口中完成更新。",
-                PrimaryButtonText = "退出 XDecode",
-                CloseButtonText = "稍后",
-                DefaultButton = ContentDialogButton.Primary
-            };
-            if (await dialog.ShowAsync() == ContentDialogResult.Primary)
-                App.CurrentApp.MainWindow.ExitApplication();
+            UpdateInstallerLauncher.Launch(packagePath);
         }
         catch (Exception exception)
         {

@@ -2,7 +2,7 @@
   #error SourcePublishDir must point to the unpackaged self-contained publish directory
 #endif
 #ifndef AppVersion
-  #define AppVersion "1.0.5"
+  #define AppVersion "1.0.6"
 #endif
 #ifndef OutputDir
   #define OutputDir SourcePath + "Output"
@@ -247,6 +247,26 @@ begin
     ResultCode) and (ResultCode <= 7);
 end;
 
+function DirectoryIsEmpty(Directory: String): Boolean;
+var
+  FindRec: TFindRec;
+begin
+  Result := True;
+  if not FindFirst(AddBackslash(Directory) + '*', FindRec) then
+    Exit;
+  try
+    repeat
+      if (FindRec.Name <> '.') and (FindRec.Name <> '..') then
+      begin
+        Result := False;
+        Exit;
+      end;
+    until not FindNext(FindRec);
+  finally
+    FindClose(FindRec);
+  end;
+end;
+
 function RemovePreviousInstallDirectory(): Boolean;
 var
   Attempt: Integer;
@@ -257,7 +277,9 @@ begin
   StableChecks := 0;
   for Attempt := 1 to 100 do
   begin
-    if not DirExists(InstallDirectory) then
+    { An updater-launched setup can inherit the app directory as its current directory. }
+    { Windows then keeps the empty directory itself open, but it is safe to reuse. }
+    if (not DirExists(InstallDirectory)) or DirectoryIsEmpty(InstallDirectory) then
     begin
       StableChecks := StableChecks + 1;
       if StableChecks >= 25 then
@@ -273,7 +295,7 @@ begin
     end;
     Sleep(200);
   end;
-  Result := not DirExists(InstallDirectory);
+  Result := (not DirExists(InstallDirectory)) or DirectoryIsEmpty(InstallDirectory);
 end;
 
 function UninstallExistingVersion(): String;

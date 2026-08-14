@@ -73,7 +73,7 @@ Windows 发布物按当前发布策略保持无 Authenticode 签名，CI 必须�
 - `FolderMonitor.swift` 直接消费 FSEvents 变更路径并只报告新增普通文件；仅在事件丢失时恢复性全量扫描，格式过滤由 `AppModel`/`AppSettings` 在稳定性检查前完成。
 - `AutomaticDecodeSuppressionStore.swift` 防止监控器重新处理 ZIP 自己发布的输出。
 - `HistoryStore.swift` 在内存中提供最近 30 条，磁盘最多保留 200 条且不超过 30 天；使用 1 秒防抖、最长 5 秒强制写入并在退出前刷新，不得写入密钥或日志正文。
-- macOS `UpdateChecker.swift` 和 Windows `UpdateChecker.cs` 读取 XDecode 的 FlatStore 公开版本元数据并比较版本；安装包只在用户确认后下载到 Downloads，校验声明大小和平台格式且不覆盖同名文件。系统打开安装界面后由 App 单独询问是否退出，不静默替换 App。
+- macOS `UpdateChecker.swift` 和 Windows `UpdateChecker.cs` 读取 XDecode 的 FlatStore 公开版本元数据并比较版本；安装包只在用户确认后下载到 Downloads，校验声明大小和平台格式且不覆盖同名文件。Windows 系统打开安装界面后不再由 App 弹出退出提示，由安装器在用户继续安装时关闭主程序；不得静默安装或替换 App。
 
 ### `XDecodeFinder`
 

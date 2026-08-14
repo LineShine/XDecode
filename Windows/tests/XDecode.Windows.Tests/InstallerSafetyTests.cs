@@ -11,4 +11,13 @@ public sealed class InstallerSafetyTests
         Assert.Contains("/F /IM XDecode.Windows.exe", script, StringComparison.Ordinal);
         Assert.DoesNotContain("/T /IM XDecode.Windows.exe", script, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ReinstallAcceptsAnEmptyDirectoryHeldByTheInstaller()
+    {
+        var script = File.ReadAllText(
+            Path.Combine(AppContext.BaseDirectory, "Installer", "XDecode.iss"));
+
+        Assert.Contains("DirectoryIsEmpty(InstallDirectory)", script, StringComparison.Ordinal);
+    }
 }
