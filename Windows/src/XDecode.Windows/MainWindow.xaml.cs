@@ -22,6 +22,9 @@ public sealed partial class MainWindow : Window
         StartupTrace.Write("MainWindow: AppWindow acquired");
         _appWindow.Resize(new Windows.Graphics.SizeInt32(1080, 720));
         _appWindow.Closing += OnClosing;
+        _ = Navigation.RegisterPropertyChangedCallback(
+            NavigationView.IsPaneOpenProperty,
+            Navigation_IsPaneOpenChanged);
         Navigation.SelectedItem = Navigation.MenuItems[0];
         RefreshAutomationStatus();
         NavigateTo("decode", activate: false);
@@ -39,8 +42,13 @@ public sealed partial class MainWindow : Window
     public void RefreshAutomationStatus()
     {
         var enabled = App.CurrentApp.Services.Settings.Current.AutomaticEnabled;
-        AutomationStatusDot.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-        AutomationStatusText.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
+        var paneOpen = Navigation.IsPaneOpen;
+        AutomationCompactStatus.Visibility = enabled && !paneOpen
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        AutomationExpandedStatus.Visibility = enabled && paneOpen
+            ? Visibility.Visible
+            : Visibility.Collapsed;
     }
 
     public void NavigateTo(string tag) => NavigateTo(tag, activate: true);
@@ -92,6 +100,13 @@ public sealed partial class MainWindow : Window
     {
         if (arguments.SelectedItemContainer?.Tag is string tag) NavigateTo(tag, activate: false);
     }
+
+    private void Navigation_Loaded(object sender, RoutedEventArgs arguments) =>
+        RefreshAutomationStatus();
+
+    private void Navigation_IsPaneOpenChanged(
+        DependencyObject sender, DependencyProperty property) =>
+        RefreshAutomationStatus();
 
     private async void AddLogs_Click(object sender, RoutedEventArgs e) =>
         await App.CurrentApp.Services.PickAndEnqueueAsync(this);

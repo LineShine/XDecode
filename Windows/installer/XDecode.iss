@@ -2,7 +2,7 @@
   #error SourcePublishDir must point to the unpackaged self-contained publish directory
 #endif
 #ifndef AppVersion
-  #define AppVersion "1.0.2"
+  #define AppVersion "1.0.4"
 #endif
 #ifndef OutputDir
   #define OutputDir SourcePath + "Output"
