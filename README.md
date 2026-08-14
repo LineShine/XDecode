@@ -12,7 +12,7 @@ XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlo
 | Xlog | `*.xlog` | 支持 `0x03...0x0D` 帧、无压缩、raw deflate、分块 deflate、Zstandard、损坏帧扫描和序号完整性检查 | 加密帧使用 secp256k1 ECDH 派生 TEA Key；私钥为 64 位 Hex |
 | Logan | `yyyy-MM-dd` 或 `*.logan` | 解析 Logan 帧，AES-128-CBC 解密，兼容 PKCS#7/NoPadding，自动解压 zlib/gzip，并恢复未结束末帧中的完整日志行 | Key 和 IV 均至少 16 个 UTF-8 字节，实际使用前 16 字节；也会先尝试全零 Key/IV |
 | MX | `*.mx` | 解析长度前缀和 FlatBuffers 条目，输出时间、级别、Tag 与消息 | 不需要密钥 |
-| ZIP | `^[A-Za-z0-9_-]*[A-Za-z0-9][A-Za-z0-9_-]*\.zip$` | 在保留目录结构及非日志文件的同时批量解密 Xlog、Logan 和 MX | 各条目沿用对应格式的匹配方案 |
+| ZIP | `^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*( \([0-9]+\))?\.zip$` | 在保留目录结构及非日志文件的同时批量解密 Xlog、Logan 和 MX | 各条目沿用对应格式的匹配方案 |
 
 应用还提供以下能力：
 
@@ -32,7 +32,7 @@ XDecode 是一个原生 macOS 日志解密工具，统一处理 Tencent Mars Xlo
 1. Xlog 加密日志：新增“Xlog secp256k1 私钥”方案，填写方案名称、文件名匹配规则和 64 位 Hex 私钥。
 2. Logan 加密日志：新增“Logan Key / IV”方案，填写文件名规则、AES Key 和 IV。Key/IV 超过 16 字节的部分不会参与解密。
 3. MX：默认匹配 `*.mx`，可直接修改匹配规则。
-4. ZIP：默认文件名除 `.zip` 外只允许 ASCII 字母、数字、`_` 和 `-`，且至少有一个 `_` 或 `-` 直接位于两个字母或数字之间；可维护多条正则规则，任一匹配即可处理。
+4. ZIP：默认文件名除 `.zip` 外只允许 ASCII 字母、数字、`_` 和 `-`，且至少有一个 `_` 或 `-` 直接位于两个字母或数字之间；结尾还可带 macOS 重复下载时追加的 ` (1)`、` (2)` 后缀。可维护多条正则规则，任一匹配即可处理。
 
 非正则规则支持 `*`、`?` 和 `yyyy-MM-dd` 模板，匹配不区分大小写，并要求覆盖完整文件名。以 `^` 开头的规则会按原始正则表达式处理。
 

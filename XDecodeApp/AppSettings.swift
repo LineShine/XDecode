@@ -5,7 +5,7 @@ enum FilenamePatternDefaults {
     static let xlog = "*.xlog"
     static let logan = "yyyy-MM-dd"
     static let mx = "*.mx"
-    static let zip = #"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
+    static let zip = #"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*( \([0-9]+\))?\.zip$"#
 }
 
 enum FilenamePattern {
@@ -123,6 +123,8 @@ final class AppSettings: ObservableObject {
         static let zipPatternRules = "zipPatternRules"
     }
 
+    private static let legacyZipPattern = #"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
+
     private let defaults: UserDefaults
     private let createBookmark: BookmarkCreator
     private let resolveBookmark: BookmarkResolver
@@ -179,12 +181,19 @@ final class AppSettings: ObservableObject {
             : defaults.bool(forKey: Key.notificationsEnabled)
         mxFilePattern = defaults.string(forKey: Key.mxFilePattern) ?? FilenamePatternDefaults.mx
 
+        let storedZipPatternRules: [ZipPatternRule]
         if let data = defaults.data(forKey: Key.zipPatternRules),
            let rules = try? JSONDecoder().decode([ZipPatternRule].self, from: data),
            !rules.isEmpty {
-            zipPatternRules = rules
+            storedZipPatternRules = rules
         } else {
-            zipPatternRules = [ZipPatternRule()]
+            storedZipPatternRules = [ZipPatternRule()]
+        }
+        zipPatternRules = storedZipPatternRules.map { rule in
+            guard rule.pattern == Self.legacyZipPattern else { return rule }
+            var migrated = rule
+            migrated.pattern = FilenamePatternDefaults.zip
+            return migrated
         }
         let storedBookmarks: [Data]
         if let bookmarks = defaults.array(forKey: Key.monitoredFolderBookmarks) as? [Data] {

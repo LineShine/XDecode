@@ -44,6 +44,9 @@ struct XlogSettingsTests {
             "abc-def.ZIP",
             "1520_1785225610163.zip",
             "f9017f94-25e8-4366-b33b-ebc7d8af1d65.zip",
+            "f9017f94-25e8-4366-b33b-ebc7d8af1d65 (1).zip",
+            "abc-def (2).ZIP",
+            "1520_1785225610163 (10).zip",
             "338911075_20059056_1logs.zip",
             "04c084ed-e28e-432e-bf15-aee001a8d9c2.zip",
             "_51500835_1logs.zip",
@@ -64,6 +67,10 @@ struct XlogSettingsTests {
             "user@cache.zip",
             "日志_123.zip",
             "_.zip",
+            "f9017f94-25e8-4366-b33b-ebc7d8af1d65 (x).zip",
+            "f9017f94-25e8-4366-b33b-ebc7d8af1d65 ().zip",
+            "f9017f94-25e8-4366-b33b-ebc7d8af1d65(1).zip",
+            "archive (1).zip",
         ]
         for fileName in unsupportedZIPNames {
             #expect(settings.logFormat(for: URL(fileURLWithPath: "/tmp/\(fileName)")) == nil)
@@ -235,6 +242,34 @@ struct XlogSettingsTests {
         restored.resetZipPatternRule(id: remainingRule.id)
         #expect(restored.zipPatternRules.map(\.pattern) == [FilenamePatternDefaults.zip])
         #expect(restored.matchesZipFile(URL(fileURLWithPath: "/tmp/123_456.zip")))
+    }
+
+    @Test("Legacy default ZIP rule migrates to accept macOS duplicate-download suffixes")
+    func zipDefaultRuleMigration() throws {
+        let suiteName = "XDecodeZipDefaultMigrationTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let legacyRule = ZipPatternRule(
+            pattern: #"^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$"#
+        )
+        let customRule = ZipPatternRule(pattern: #"^release\..+\.zip$"#)
+        defaults.set(
+            try JSONEncoder().encode([legacyRule, customRule]),
+            forKey: "zipPatternRules"
+        )
+
+        let migrated = AppSettings(defaults: defaults)
+        #expect(migrated.zipPatternRules.map(\.pattern) == [
+            FilenamePatternDefaults.zip,
+            #"^release\..+\.zip$"#,
+        ])
+        #expect(migrated.matchesZipFile(
+            URL(fileURLWithPath: "/tmp/f9017f94-25e8-4366-b33b-ebc7d8af1d65 (1).zip")
+        ))
+        #expect(migrated.matchesZipFile(URL(fileURLWithPath: "/tmp/release.prod.zip")))
+        #expect(!migrated.matchesZipFile(
+            URL(fileURLWithPath: "/tmp/f9017f94-25e8-4366-b33b-ebc7d8af1d65 (x).zip")
+        ))
     }
 
     @Test("Logan date templates and explicit regular expressions match full filenames")

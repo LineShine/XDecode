@@ -113,7 +113,7 @@ Xcode 构建可能需要本机 Signing Team。仅改 `Sources/XDecodeCore`、`XD
 
 ## 文件名识别
 
-默认规则：Xlog `*.xlog`，MX `*.mx`，Logan `yyyy-MM-dd`，ZIP `^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*\.zip$`。
+默认规则：Xlog `*.xlog`，MX `*.mx`，Logan `yyyy-MM-dd`，ZIP `^[A-Za-z0-9_-]*[A-Za-z0-9][_-][A-Za-z0-9][A-Za-z0-9_-]*( \([0-9]+\))?\.zip$`。
 
 - 规则不区分大小写。
 - 非 `^` 开头的规则会转成全文件名匹配，支持 `*`、`?`、`yyyy`、`MM`、`dd`。
