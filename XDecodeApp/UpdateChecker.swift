@@ -64,14 +64,38 @@ enum UpdateDownloadError: LocalizedError, Equatable, Sendable {
 }
 
 struct UpdateChecker: Sendable {
+    typealias DataRequest = @Sendable (URLRequest) async throws -> (Data, URLResponse)
+    typealias RetryDelay = @Sendable () async throws -> Void
+
     static let releasesEndpoint = URL(
         string: "https://flatstore.sfhw.cc/api/apps/5064015e-5fab-4aa6-9943-67678c272378/releases?platform=macOS&limit=1"
     )!
 
     private let endpoint: URL
+    private let dataRequest: DataRequest
+    private let retryDelay: RetryDelay
 
     init(endpoint: URL = UpdateChecker.releasesEndpoint) {
         self.endpoint = endpoint
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.waitsForConnectivity = true
+        let session = URLSession(configuration: configuration)
+        dataRequest = { request in
+            try await session.data(for: request)
+        }
+        retryDelay = {
+            try await Task.sleep(for: .milliseconds(500))
+        }
+    }
+
+    init(
+        endpoint: URL,
+        dataRequest: @escaping DataRequest,
+        retryDelay: @escaping RetryDelay
+    ) {
+        self.endpoint = endpoint
+        self.dataRequest = dataRequest
+        self.retryDelay = retryDelay
     }
 
     func check(currentVersion: String) async throws -> UpdateAvailability {
@@ -80,7 +104,7 @@ struct UpdateChecker: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("XDecode/\(currentVersion)", forHTTPHeaderField: "User-Agent")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await performRequest(request)
         guard let response = response as? HTTPURLResponse else {
             throw UpdateCheckError.invalidResponse
         }
@@ -93,6 +117,30 @@ struct UpdateChecker: Sendable {
 
         let release = try Self.release(from: data, relativeTo: endpoint)
         return try Self.availability(currentVersion: currentVersion, latestRelease: release)
+    }
+
+    private func performRequest(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await dataRequest(request)
+        } catch {
+            guard Self.isRetryableTransportError(error) else { throw error }
+            try await retryDelay()
+            return try await dataRequest(request)
+        }
+    }
+
+    private static func isRetryableTransportError(_ error: any Error) -> Bool {
+        guard let urlError = error as? URLError else { return false }
+        return switch urlError.code {
+        case .notConnectedToInternet,
+             .networkConnectionLost,
+             .dnsLookupFailed,
+             .cannotFindHost,
+             .cannotConnectToHost:
+            true
+        default:
+            false
+        }
     }
 
     static func release(from data: Data, relativeTo endpoint: URL) throws -> UpdateRelease {

@@ -2,6 +2,29 @@ import Foundation
 import Testing
 @testable import XDecodeApp
 
+private actor InitiallyOfflineUpdateRequest {
+    private let data: Data
+    private let response: URLResponse
+    private var requestCount = 0
+
+    init(data: Data, response: URLResponse) {
+        self.data = data
+        self.response = response
+    }
+
+    func perform(_ request: URLRequest) throws -> (Data, URLResponse) {
+        requestCount += 1
+        if requestCount == 1 {
+            throw URLError(.notConnectedToInternet)
+        }
+        return (data, response)
+    }
+
+    func count() -> Int {
+        requestCount
+    }
+}
+
 @Suite("Update checker")
 struct UpdateCheckerTests {
     private let downloadURL = URL(string: "https://flatstore.sfhw.cc/api/releases/release-id/download")!
@@ -59,6 +82,42 @@ struct UpdateCheckerTests {
         #expect(throws: UpdateCheckError.invalidResponse) {
             try UpdateChecker.release(from: data, relativeTo: UpdateChecker.releasesEndpoint)
         }
+    }
+
+    @Test("A transient first-request offline error is retried automatically")
+    func retriesInitialOfflineError() async throws {
+        let data = Data(#"""
+        {
+            "currentRelease": {
+                "version": "1.2.0",
+                "downloadUrl": "/api/releases/release-id/download",
+                "sizeBytes": 1024
+            }
+        }
+        """#.utf8)
+        let response = HTTPURLResponse(
+            url: UpdateChecker.releasesEndpoint,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        let request = InitiallyOfflineUpdateRequest(data: data, response: response)
+        let checker = UpdateChecker(
+            endpoint: UpdateChecker.releasesEndpoint,
+            dataRequest: { urlRequest in
+                try await request.perform(urlRequest)
+            },
+            retryDelay: {}
+        )
+
+        let availability = try await checker.check(currentVersion: "1.0.0")
+
+        #expect(
+            availability == .updateAvailable(
+                UpdateRelease(version: "1.2.0", downloadURL: downloadURL, sizeBytes: 1024)
+            )
+        )
+        #expect(await request.count() == 2)
     }
 
     @Test("A valid DMG is saved without overwriting an existing download")
