@@ -11,3 +11,4 @@ Windows/installer/Output/
 Windows/vcpkg_installed/
 Windows/*.pfx
 Windows/*.cer
+Windows/publish
